@@ -347,6 +347,13 @@ class StackClient(object):
         return answers
 
 
+    def get_answer_by_id(self, question_id: int, answer_id: int):
+
+        endpoint = f"/questions/{question_id}/answers/{answer_id}"
+        answer = self.get_items(endpoint)
+        return answer
+
+
     def add_answer(self, question_id: int, body: str, impersonation: bool=False):
    
         endpoint = f"/questions/{question_id}/answers"
@@ -378,6 +385,12 @@ class StackClient(object):
             all_answers.append(answers)
 
         return answers
+
+
+    def delete_answer(self, question_id: int, answer_id: int):
+
+        endpoint = f"/questions/{question_id}/answers/{answer_id}"
+        self.delete_item(endpoint)
 
 
     #######################

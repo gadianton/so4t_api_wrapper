@@ -1,4 +1,7 @@
 """
+Much of the testing requires admin permissions, particular when checking the deletion status of
+content. 
+
 For Stack Overflow Enterprise, turn off duplicate checking at this URL (requires admin):
 <SITE_URL>/developer/site-settings/edit?name=Questions.Testing.EnableDuplicateCheckForQuestions
 
@@ -61,7 +64,7 @@ def article(client):
     yield article
 
 
-class xTestClientCreation(object):
+class TestClientCreation(object):
     def test_create_client_happy_path(self):
 
         client = StackClient(GOOD_URL, GOOD_TOKEN)
@@ -112,7 +115,7 @@ class xTestClientCreation(object):
             stack = StackClient(url, token)
 
 
-class xTestQuestionMethods(object):
+class TestQuestionMethods(object):
     def test_add_question_happy_path(self, client):
 
         new_question = client.add_question(TEST_TITLE, TEST_BODY, TEST_TAGS)
@@ -170,7 +173,7 @@ class xTestQuestionMethods(object):
         assert question['isDeleted'] == True
 
 
-class xTestAnswerMethods(object):
+class TestAnswerMethods(object):
     def test_add_answer_happy_path(self, client, question):
 
         test_answer = client.add_answer(question['id'], TEST_BODY)
@@ -185,13 +188,47 @@ class xTestAnswerMethods(object):
         assert type(answers) == list
         assert answer['body'] == answers[0]['body'] 
 
-
+    
     def test_get_answers_with_bad_question_id(self, client):
 
         with pytest.raises(Exception) as e:
             client.get_answers(BAD_ID)
         
         assert "404" in str(e.value)
+
+
+    def test_get_answer_by_id_happy_path(self, client, question_and_answer):
+
+        question, answer = question_and_answer
+        answer = client.get_answer_by_id(question['id'], answer['id'])
+        assert type(answer) == dict
+        assert TEST_BODY in answer['body']
+
+
+    def test_get_answer_with_bad_answer_id(self, client, question_and_answer):
+
+        question, answer = question_and_answer
+        with pytest.raises(Exception) as e:
+            client.get_answer_by_id(question['id'], BAD_ID)
+        
+        assert "404" in str(e.value)
+
+
+    def test_get_answer_with_bad_question_id(self, client, question_and_answer):
+
+        question, answer = question_and_answer
+        with pytest.raises(Exception) as e:
+            client.get_answer_by_id(BAD_ID, answer['id'])
+        
+        assert "404" in str(e.value)
+    
+
+    def test_delete_answer_happy_path(self, client, question_and_answer):
+
+        question, answer = question_and_answer
+        client.delete_answer(question['id'], answer['id'])
+        answer = client.get_answer_by_id(question['id'], answer['id'])
+        assert answer['isDeleted'] == True
 
 
 class TestArticleMethods(object):
