@@ -10,9 +10,10 @@ Otherwise, the testing will fail since it creates the same content over and over
 
 import os
 import pytest
+import random
 import shutil
 from so4t_api import StackClient, BadURLError, UnauthorizedError, InvalidRequestError
-
+import string
 
 GOOD_URL = os.getenv('GOOD_URL')
 GOOD_TOKEN = os.getenv('GOOD_TOKEN')
@@ -24,7 +25,9 @@ TEST_TITLE = "How to use Python's requests library?"
 TEST_BODY = "I am trying to make API calls using Python's requests library, but I am facing " \
             "some issues. Can someone provide a simple example?"
 TEST_TYPE = "knowledgeArticle"
-TEST_TAGS = ["python", "requests", "api"]
+TEST_TAGS = ["python", "requests", "api", "cheesepuffs"]
+TEST_TAG_NAME = "cheesepuffs"
+TEST_DESCRIPTION = "For all fans of cheese puffs"
 EDITED_TITLE = "This has been changed to something new"
 BAD_ID = 99999999
 
@@ -35,7 +38,6 @@ def client():
 
 
 def create_client(url: str=GOOD_URL, token: str=GOOD_TOKEN, key: str=GOOD_KEY) -> StackClient:
-
     return StackClient(url, token, key)
 
 
@@ -52,17 +54,30 @@ def question_and_answer(client, question):
 
 
 @pytest.fixture(scope="class")
-def account_id(client):
+def user(client):
 
     users = client.get_users(one_page_limit=True)
-    account_id = users[0]['accountId']
-    return account_id
+    return users[0]
+
+@pytest.fixture(scope="class")
+def group(client, user):
+
+    user_ids = [user['id']]
+    group_name = random_string(15)
+    group = client.add_user_group(group_name, user_ids, TEST_DESCRIPTION)
+    yield group
 
 
 @pytest.fixture(scope="class")
 def article(client):
     article = client.add_article(TEST_TITLE, TEST_BODY, TEST_TYPE, TEST_TAGS)
     yield article
+
+
+@pytest.fixture(scope="class")
+def tag(client):
+    tag = client.get_tag_by_name(TEST_TAG_NAME)
+    yield tag
 
 
 class TestClientCreation(object):
@@ -291,28 +306,145 @@ class TestUserMethods(object):
         assert len(users) > 0
 
 
-class TestImpersonationMethods(object):
-    def test_get_impersonation_token_happy_path(self, client, account_id):
+class TestUserGroupMethods(object):
 
-        impersonation_token = client.get_impersonation_token(account_id)
+    def test_add_user_group_happy_path(self, client, user):
+
+        group_name = random_string(15)
+        new_group = client.add_user_group(group_name, [user['id']], TEST_DESCRIPTION)
+        assert type(new_group) == dict
+        assert new_group['name'] == group_name
+        assert new_group['description'] == TEST_DESCRIPTION
+        assert new_group['users'][0]['id'] == user['id']
+
+
+    def test_get_user_groups_happy_path(self, client):
+
+        groups = client.get_user_groups()
+        assert type(groups) == list
+        assert type(groups[0]) == dict
+        assert type(groups[0]['users']) == list
+
+
+class TestTagMethods(object):
+
+    def test_get_tags_happy_path(self, client):
+
+        tags = client.get_tags()
+        assert type(tags) == list
+        assert len(tags) > 0
+
+    
+    def test_get_tag_by_name_happy_path(self, client):
+
+        tag = client.get_tag_by_name(TEST_TAG_NAME)
+        assert tag['name'] == TEST_TAG_NAME
+
+    
+    def test_get_tag_by_id_happy_path(self, client, tag):
+
+        tag = client.get_tag_by_id(tag['id'])
+        assert type(tag) == dict
+        assert tag['name'] == TEST_TAG_NAME
+
+    
+    def test_get_tag_smes_happy_path(self, client, tag):
+
+        smes = client.get_tag_smes(tag['id'])
+        assert type(smes) == dict
+        assert type(smes['users']) == list
+        assert type(smes['userGroups']) == list
+
+
+    def test_edit_tag_smes_happy_path(self, client, tag, user, group):
+
+        edited_smes = client.edit_tag_smes(tag['id'], [user['id']], [group['id']])
+        assert type(edited_smes) == dict
+        assert len(edited_smes['users']) == 1
+        assert edited_smes['users'][0]['id'] == user['id']
+        # assert len(edited_smes['userGroups']) == 1
+        assert group['id'] in [group['id'] for group in edited_smes['userGroups']]
+
+
+    def test_add_sme_users_happy_path(self, client, tag, user):
+
+        self.reset_smes(client, tag)
+        updated_smes = client.add_sme_users(tag['id'], [user['id']])
+        assert type(updated_smes) == dict
+        assert len(updated_smes['users']) == 1
+        assert updated_smes['users'][0]['id'] == user['id']
+        # assert len(updated_smes['userGroups']) == 0
+
+    
+    def test_add_sme_groups_happy_path(self, client, tag, group):
+
+        self.reset_smes(client, tag)
+        updated_smes = client.add_sme_groups(tag['id'], [group['id']])
+        assert type(updated_smes) == dict
+        assert len(updated_smes['users']) == 0
+        # assert len(updated_smes['userGroups']) == 1
+        assert group['id'] in [group['id'] for group in updated_smes['userGroups']]
+
+
+    def test_remove_sme_user_happy_path(self, client, tag, user):
+
+        tag_id = tag['id']
+        user_id = user['id']
+        smes = client.add_sme_users(tag_id, [user_id])
+        client.remove_sme_user(tag_id, user_id)
+        smes = client.get_tag_smes(tag_id)
+        assert user_id not in [user['id'] for user in smes['users']]
+
+    
+    def test_remove_sme_group_happy_path(self, client, tag, group):
+
+        tag_id = tag['id']
+        group_id = group['id']
+        smes = client.add_sme_groups(tag_id, [group_id])
+        client.remove_sme_group(tag_id, group_id)
+        smes = client.get_tag_smes(tag_id)
+        assert group_id not in [group['id'] for group in smes['userGroups']]
+
+
+    def test_get_all_tags_and_smes_happy_path(self, client):
+
+        tags = client.get_all_tags_and_smes()
+        assert type(tags) == list
+        assert type(tags[0]) == dict
+        assert type(tags[0]['smes']) == dict
+        assert type(tags[0]['smes']['users']) == list
+        assert type(tags[0]['smes']['userGroups']) == list
+
+
+    def reset_smes(self, client, tag):
+        """Removes all SMES from a tag to create a blank slate for testing"""
+        no_smes = client.edit_tag_smes(tag['id'], [], [])
+
+        
+
+
+class TestImpersonationMethods(object):
+    def test_get_impersonation_token_happy_path(self, client, user):
+
+        impersonation_token = client.get_impersonation_token(user['accountId'])
         assert type(impersonation_token) == str
         assert impersonation_token.endswith("))") # token strings always end in double parentheses
 
 
-    def test_get_impersonation_token_with_no_key(self, account_id):
+    def test_get_impersonation_token_with_no_key(self, user):
 
         client = create_client(key=None)
         # account_id = self.get_account_id(client=stack)
         with pytest.raises(InvalidRequestError):
-            impersonation_token = client.get_impersonation_token(account_id)
+            impersonation_token = client.get_impersonation_token(user['accountId'])
 
 
-    def test_get_impersonation_token_with_bad_key(self, account_id):
+    def test_get_impersonation_token_with_bad_key(self, user):
 
         client = create_client(key=BAD_KEY)
         # account_id = self.get_account_id(client=stack)
         with pytest.raises(InvalidRequestError):
-            impersonation_token = client.get_impersonation_token(account_id)
+            impersonation_token = client.get_impersonation_token(user['accountId'])
 
 
 class TestOtherFunctions(object):
@@ -341,10 +473,13 @@ def test_clean_up_questions_created_by_tests(client):
             client.delete_question(question['id'])
 
 
-def test_clean_up_articles_created_by_testd(client):
+def test_clean_up_articles_created_by_tests(client):
 
     articles = client.get_articles(page=1, pagesize=30, one_page_limit=False, sort="creation",
                                     order="desc")
     for article in articles:
         if article['title'] == TEST_TITLE:
             client.delete_article(article['id'])
+
+def random_string(length):
+    return ''.join(random.choice(string.ascii_letters) for x in range(length))

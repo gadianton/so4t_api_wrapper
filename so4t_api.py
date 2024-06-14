@@ -160,7 +160,7 @@ class StackClient(object):
         params = {
             'page': page if isinstance(page, int) else 1,
             'pageSize': pagesize if pagesize in [15, 30, 50, 100] else 100,
-            'sort': sort if sort in ['creation', 'activity', 'score'] else 'creation',
+            'sort': sort if isinstance(sort, str) else 'creation',
             "order": order if order in ['asc', 'desc'] else 'asc',
             "isAnswered": is_answered if isinstance(is_answered, bool) else None,
             "hasAcceptedAnswer": has_accepted_answer if isinstance(has_accepted_answer, bool) 
@@ -340,7 +340,7 @@ class StackClient(object):
         params = {
             'page': page if isinstance(page, int) else 1,
             'pageSize': pagesize if pagesize in [15, 30, 50, 100] else 100,
-            'sort': sort if sort in ['creation', 'modified', 'score'] else 'creation',
+            'sort': sort if isinstance(sort, str) else 'creation',
             "order": order if order in ['asc', 'desc'] else 'desc',
         }
         answers = self.get_items(endpoint, params)
@@ -427,7 +427,7 @@ class StackClient(object):
         params = {
             'page': page if isinstance(page, int) else 1,
             'pageSize': pagesize if pagesize in [15, 30, 50, 100] else 100,
-            'sort': sort if sort in ['creation', 'activity', 'score'] else 'creation',
+            'sort': sort if isinstance(sort, str) else 'creation',
             "order": order if order in ['asc', 'desc'] else 'asc',
             "tagId": tag_ids if isinstance(tag_ids, list) else None,
             "authorId": author_id if author_id is None or isinstance(author_id, int) else None,
@@ -446,7 +446,7 @@ class StackClient(object):
         return article
 
 
-    def add_article(self, title: str, body: str, type: str, tags: list, 
+    def add_article(self, title: str, body: str, article_type: str, tags: list, 
                     editable_by: str='ownerOnly', editor_user_ids: list=[], 
                     editor_user_group_ids: list=[], impersonation=False) -> dict:
         """Create a new article in the system.
@@ -454,7 +454,7 @@ class StackClient(object):
         Args:
             title (str): The title of the article.
             body (str): The body of the article.
-            type (str): The type of the article. Must be one of: 
+            article_type (str): The type of the article. Must be one of: 
                 'knowledgeArticle', 'announcement', 'policy', or 'howToGuide'.
             tags (list): A list of strings representing tags for the article.
             editable_by (str, optional): Who can edit the article. Must be one of: 
@@ -473,7 +473,7 @@ class StackClient(object):
         params = {
             "title": title,
             "body": body,
-            "type": type,
+            "type": article_type,
             "tags": tags,
             "permissions": {
                 "editableBy": editable_by,
@@ -486,22 +486,21 @@ class StackClient(object):
         return new_article
     
 
-    def edit_article(self, article_id: int, title: str=None, body: str=None, type: str=None, 
-                     tags: list=None, editable_by: str=None, editor_user_ids: list=None, 
-                     editor_user_group_ids: list=None, impersonation=False) -> dict:
+    def edit_article(self, article_id: int, title: str=None, body: str=None, 
+                     article_type: str=None, tags: list=None, editable_by: str=None, 
+                     editor_user_ids: list=None, editor_user_group_ids: list=None, 
+                     impersonation=False) -> dict:
         
         endpoint = f"/articles/{article_id}"
 
-        if None in [title, body, type, tags, editable_by, editor_user_ids, editor_user_group_ids]:
+        if None in [title, body, article_type, tags, editable_by, editor_user_ids, 
+                    editor_user_group_ids]:
             original_article = self.get_article_by_id(article_id)
-            # original_editor_users = original_article['permissions']['editorUsers']
-            # original_editor_groups = original_article['permissions']['editorUserGroups']
-            # permissions = original_article['permissions']
         
         params = {
             'title': title if title != None else original_article['title'],
             'body': body if body != None else original_article['body'],
-            'type': type if type != None else original_article['type'],
+            'type': article_type if article_type != None else original_article['type'],
             'tags': tags if tags != None else [tag["name"] for tag in original_article['tags']],
             "permissions": {
                 "editableBy": editable_by if editable_by != None else 
@@ -513,7 +512,7 @@ class StackClient(object):
             }
         }
 
-        edited_article = self.edit_item(endpoint, params)
+        edited_article = self.edit_item(endpoint, params, impersonation=impersonation)
         return edited_article
 
 
@@ -527,24 +526,89 @@ class StackClient(object):
     ### TAG METHODS ###
     ###################
 
-    def get_tags(self) -> list:
+    def get_tags(self, page: int=None, pagesize: int=None,
+                    sort: str=None, order: str=None,
+                    partial_name: str=None, has_smes: bool= None,
+                    one_page_limit: bool=False) -> list:
 
         endpoint = "/tags"
         params = {
-            'page': 1,
-            'pagesize': 100,
+            'page': page if isinstance(page, int) else 1,
+            'pageSize': pagesize if pagesize in [15, 30, 50, 100] else 100,
+            'sort': sort if isinstance(sort, str) else 'creationDate',
+            "order": order if order in ['asc', 'desc'] else 'asc',
+            "partialName": partial_name if isinstance(partial_name, str) else None,
+            "hasSmes": has_smes if isinstance(has_smes, bool) else None
         }
 
-        tags = self.get_items(endpoint, params)
+        tags = self.get_items(endpoint, params, one_page_limit=one_page_limit)
         return tags
 
+
+    def get_tag_by_id(self, tag_id: int) -> dict:
+
+        endpoint = f"/tags/{tag_id}"
+        tag = self.get_items(endpoint)
+        return tag
+    
+
+    def get_tag_by_name(self, tag_name: str) -> int:
+        
+        tags = self.get_tags(partial_name=tag_name.lower())
+        
+        for tag in tags:
+            if tag['name'] == tag_name:
+                return tag
+        
+        raise NotFoundError("No tags match the name '{tag_name}'")
+    
 
     def get_tag_smes(self, tag_id):
 
         endpoint = f"/tags/{tag_id}/subject-matter-experts"
-
         smes = self.get_items(endpoint)
         return smes
+    
+
+    def edit_tag_smes(self, tag_id: int, user_ids: list=[], group_ids: list=[]) -> dict:
+        """ Overwrites all existing tag SMEs with the provided parameters
+        
+        """
+        endpoint = f"/tags/{tag_id}/subject-matter-experts"
+        params = {
+            "userIds": user_ids,
+            "userGroupIds": group_ids
+        }
+        edited_smes = self.edit_item(endpoint, params)
+        return edited_smes
+
+
+    def add_sme_users(self, tag_id: int, user_ids: list) -> dict:
+
+        endpoint = f"/tags/{tag_id}/subject-matter-experts/users"
+        params = user_ids
+        updated_smes = self.add_item(endpoint, params)
+        return updated_smes
+
+
+    def add_sme_groups(self, tag_id: int, group_ids: list) -> dict:
+
+        endpoint = f"/tags/{tag_id}/subject-matter-experts/user-groups"
+        params = group_ids
+        updated_smes = self.add_item(endpoint, params)
+        return updated_smes
+
+
+    def remove_sme_user(self, tag_id: int, user_id: int):
+
+        endpoint = f"/tags/{tag_id}/subject-matter-experts/users/{user_id}"
+        self.delete_item(endpoint)
+
+
+    def remove_sme_group(self, tag_id: int, group_id: int):
+
+        endpoint = f"/tags/{tag_id}/subject-matter-experts/user-groups/{group_id}"
+        self.delete_item(endpoint)
 
 
     def get_all_tags_and_smes(self) -> list:
@@ -560,11 +624,6 @@ class StackClient(object):
         return tags
 
 
-    def get_tag_id_by_name(self, tag_name):
-        ### Need to first build out tag name filter for get_tags method
-        return
-
-
     ####################
     ### USER METHODS ###
     ####################
@@ -578,7 +637,7 @@ class StackClient(object):
         params = {
             'page': page if isinstance(page, int) else 1,
             'pageSize': pagesize if pagesize in [15, 30, 50, 100] else 100,
-            'sort': sort if sort in ['reputation'] else 'reputation',
+            'sort': sort if isinstance(sort, str) else 'reputation',
             "order": order if order in ['asc', 'desc'] else 'desc',
         }
 
@@ -629,17 +688,57 @@ class StackClient(object):
     ### USER GROUP METHODS ###
     ##########################
 
-    def get_user_groups(self):
+    def get_user_groups(self, page: int = None, pagesize: int = None,
+                        sort: str = None, order: str = None) -> list:
+        # sort can be 'name' or 'size'
 
         endpoint = "/user-groups"
         params = {
-            'page': 1,
-            'pagesize': 100,
+            'page': page if isinstance(page, int) else 1,
+            'pageSize': pagesize if pagesize in [15, 30, 50, 100] else 100,
+            'sort': sort if isinstance(sort, str) else 'name',
+            "order": order if order in ['asc', 'desc'] else 'desc',
         }
 
         user_groups = self.get_items(endpoint, params)
         return user_groups
     
+
+    def get_user_group_by_id(self, group_id: int) -> dict:
+
+        endpoint = f"/user-groups/{group_id}"
+        group = self.get_items(endpoint)
+        return group
+
+
+    def add_user_group(self, name: str, user_ids: list, description: str=None) -> dict:
+
+        endpoint = "/user-groups"
+        params = {
+            "name": name,
+            "userIds": user_ids,
+            "description": description
+        }
+
+        new_group = self.add_item(endpoint, params)
+        return new_group
+    
+
+    def edit_user_group(self, group_id: int, name: str=None, 
+                        user_ids: list=None, description: str=None) -> dict:
+
+        endpoint = f"/user-groups/{group_id}"
+        if None in [name, user_ids, description]:
+            original_group = self.get_user_group_by_id(group_id)
+
+        params = {
+            'name': name if name != None else original_group['name'],
+            'userIds': user_ids if user_ids != None else original_group['userIds'],
+            'description': description if description != None else original_group['description']
+        }
+        edited_group = self.edit_item(endpoint, params)
+        return edited_group
+
 
     ######################
     ### SEARCH METHODS ###
