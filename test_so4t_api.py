@@ -10,6 +10,7 @@ Otherwise, the testing will fail since it creates the same content over and over
 
 import os
 import pytest
+import shutil
 from so4t_api import StackClient, BadURLError, UnauthorizedError, InvalidRequestError
 
 
@@ -312,6 +313,23 @@ class TestImpersonationMethods(object):
         # account_id = self.get_account_id(client=stack)
         with pytest.raises(InvalidRequestError):
             impersonation_token = client.get_impersonation_token(account_id)
+
+
+class TestOtherFunctions(object):
+
+    def test_export_to_json_happy_path(self, client):
+
+        file_name = "questions.json"
+        directory = "cheesepuffs"
+        file_path = os.path.join(directory, file_name)
+
+        questions = client.get_questions()
+        client.export_to_json(file_name, questions, directory=directory)
+        assert os.path.exists(directory)
+        assert os.path.isdir(directory)
+        assert os.path.exists(file_path)
+
+        shutil.rmtree(directory) # clean up creation of directory and file
 
 
 def test_clean_up_questions_created_by_tests(client):

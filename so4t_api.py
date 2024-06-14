@@ -1051,11 +1051,11 @@ class StackClient(object):
                 raise Exception(f"Encountered an unexpected response from server: {error_message}")
         
 
-    def export_to_json(file_name: str, data: list|dict, directory: str=None):
+    def export_to_json(self, file_name: str, data: list|dict, directory: str=None):
 
         json_extension = '.json'
         if not file_name.endswith(json_extension):
-            file_name = file_name + '.json'
+            file_name = file_name + json_extension
 
         if directory and not os.path.exists(directory):
             os.makedirs(directory)
