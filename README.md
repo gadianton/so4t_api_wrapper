@@ -23,33 +23,15 @@ A Python wrapper for the Stack Overflow for Teams API
 * Install the dependencies: `pip3 install -r requirements.txt`
 
 **API Authentication**
-
-For the Basic and Business tiers, you'll need an API token. For Enterprise, you'll need to obtain both an API key and an API token.
-
-
-* For Enterprise, documentation for creating the key and token can be found within your instance, at this url: `https://[your_site]/api/docs/authentication`
-
-Creating an access token for Enterpise can sometimes be tricky for people who haven't done it before. Here are some (hopefully) straightforward instructions:
-* Go to the page where you created your API key. Take note of the "Client ID" associated with your API key.
-* Go to the following URL, replacing the base URL, the `client_id`, and base URL of the `redirect_uri` with your own:
-`https://YOUR.SO-ENTERPRISE.URL/oauth/dialog?client_id=111&redirect_uri=https://YOUR.SO-ENTERPRISE.URL/oauth/login_success`
-* You may be prompted to login to Stack Overflow Enterprise, if you're not already. Either way, you'll be redirected to a page that simply says "Authorizing Application"
-* In the URL of that page, you'll find your access token. Example: `https://YOUR.SO-ENTERPRISE.URL/oauth/login_success#access_token=YOUR_TOKEN`
-
-
-* Open a terminal window (or, for Windows, a command prompt)
-* Navigate to the directory where you unpacked the files
-* Install the dependencies: `python3 -m pip install -r requirements.txt --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org`
-
-> NOTE: Depending on your installation of Python, you may need to use `python` or `py` instead of `python3` in the command above. If `python3` is not a recognized command, you can check which command to use by running `python --version` or `py --version` in your terminal and seeing which responds with the installed Python version.
-
-**API Authentication**
 To authenticate with the Stack Overflow API, you will need to generate a valid access token with write permissions.
 
 * For Basic or Business, instructions for creating a personal access token (PAT) can be found in [this KB article](https://stackoverflow.help/en/articles/4385859-stack-overflow-for-teams-api).
 * For Enterprise, follow the instructions in the KB article titled [Secure API Token Generation Using OAuth with PKCE](https://support.stackenterprise.co/support/solutions/articles/22000286119-secure-api-token-generation-using-oauth-with-pkce)
 
 > NOTE: For Enterprise, if you'll be performing any API tasks that require posting or editing content (i.e. anything beyond just getting/reading content), you'll need to make sure to include the `write_access` scope when generating your token; otherwise, you will not be able to make the necessary updates to content via the API.
+
+> ANOTHER NOTE: For Enterprsise, if you'll be using the impersonation methods, this will additionally require an API key, which will be submitted as an argument when instantiating StackClient.
+
 
 ## Usage
 A basic example of how to use the wrapper in an application:
