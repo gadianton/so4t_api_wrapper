@@ -115,8 +115,7 @@ class StackClient(object):
     ### QUESTION METHODS ###
     ########################
 
-    def get_questions(self, 
-                      page: int = None, pagesize: int = None,
+    def get_questions(self, page: int = None, pagesize: int = None,
                       sort: str = None, order: str = None, 
                       is_answered: bool = None, has_accepted_answer: bool = None,
                       question_id: list=None, tag_id: list = None, author_id: int = None,
@@ -653,12 +652,11 @@ class StackClient(object):
     
 
     def get_user_by_email(self, email: str) -> dict:
-        '''
-        Email is not case-sensitive. 
-        '''
-
+        """
+        Requires admin permissions; only admins can see a user's email address via API.
+        Email is not case-sensitive.
+        """
         endpoint = f"/users/by-email/{email}"
-
         user = self.get_items(endpoint)
         return user
     
@@ -671,7 +669,10 @@ class StackClient(object):
 
 
     def get_account_id_by_email(self, email: str) -> int:
-
+        """
+        Requires admin permissions; only admins can see a user's email address via API.
+        Email is not case-sensitive.
+        """
         user = self.get_user_by_email(email)
         account_id = user['accountId']
         return account_id
@@ -733,31 +734,47 @@ class StackClient(object):
 
         params = {
             'name': name if name != None else original_group['name'],
-            'userIds': user_ids if user_ids != None else original_group['userIds'],
+            'userIds': user_ids if user_ids != None else [user['id'] for user in 
+                                                          original_group['users']],
             'description': description if description != None else original_group['description']
         }
         edited_group = self.edit_item(endpoint, params)
         return edited_group
 
 
+    def add_users_to_group(self, group_id: int, user_ids: list) -> dict:
+
+        endpoint = f"/user-groups/{group_id}/members"
+        params = user_ids
+        updated_group = self.add_item(endpoint, params)
+        return updated_group
+    
+
+    def delete_user_from_group(self, group_id: int, user_id: int):
+
+        endpoint = f"/user-groups/{group_id}/members/{user_id}"
+        self.delete_item(endpoint)
+
+
     ######################
     ### SEARCH METHODS ###
     ######################
 
-    def get_search_results(self, query, sort='relevance'):
+    def get_search_results(self, query: str, page: int = None, pagesize: int = None,
+                      sort: str = None, one_page_limit: bool=True) -> list:
         '''
         As of June 2024, the endpoint always returns exactly 100 results
         `sort` can be one of four string values: 'relevance', 'newest', 'active', or 'score'
+        Sort order is always descending
         '''
         endpoint = "/search"
         params = {
             'query': query,
-            'page': 1,
-            'pagesize': 100,
-            'sort': sort
+            'page': page if isinstance(page, int) else 1,
+            'pageSize': pagesize if pagesize in [15, 30, 50, 100] else 100,
+            'sort': sort if isinstance(sort, str) else 'relevance',
         }
-
-        search_results = self.get_items(endpoint, params)
+        search_results = self.get_items(endpoint, params, one_page_limit=one_page_limit)
         return search_results
 
 
@@ -767,41 +784,64 @@ class StackClient(object):
 
     # As of June 2024, there are no API endpoints for creating/deleting communities
 
-    def get_communities(self):
+    def get_communities(self, page: int = None, pagesize: int = None,
+                      sort: str = None, order: str = None) -> list:
+        """
+        `sort` can be 'name' or 'size'
+        """
             
         endpoint = "/communities"
         params = {
-            'page': 1,
-            'pagesize': 100,
+            'page': page if isinstance(page, int) else 1,
+            'pageSize': pagesize if pagesize in [15, 30, 50, 100] else 100,
+            'sort': sort if isinstance(sort, str) else 'name',
+            "order": order if order in ['asc', 'desc'] else 'asc',
         }
 
         communities = self.get_items(endpoint, params)
         return communities
     
 
-    def get_community_by_id(self, community_id: int):
+    def get_community_by_id(self, community_id: int) -> dict:
 
         endpoint = f"/communities/{community_id}"
-
         community = self.get_items(endpoint)
         return community
 
 
     def join_community(self, community_id: int, impersonation: bool=False):
 
-        method = POST
         endpoint = f"/communities/{community_id}/join"
 
-        updated_community = self.send_api_call(method, endpoint, impersonation=impersonation)
+        updated_community = self.add_item(endpoint)
         return updated_community
     
 
     def leave_community(self, community_id: int, impersonation: bool=False):
 
-        method = POST
         endpoint = f"/communities/{community_id}/leave"
 
-        updated_community = self.send_api_call(method, endpoint, impersonation=impersonation)
+        updated_community = self.add_item(endpoint)
+        return updated_community
+
+
+    def add_users_to_community(self, community_id: int, user_ids: list) -> dict:
+
+        endpoint = f"/communities/{community_id}/join/bulk"
+        params = {
+            "memberUserIds": user_ids
+        }
+        updated_community = self.add_item(endpoint, params)
+        return updated_community
+    
+
+    def remove_users_from_community(self, community_id: int, user_ids: list) -> dict:
+
+        endpoint = f"/communities/{community_id}/leave/bulk"
+        params = {
+            "memberUserIds": user_ids
+        }
+        updated_community = self.add_item(endpoint, params)
         return updated_community
 
 
@@ -962,33 +1002,6 @@ class StackClient(object):
         self.impersonation_token = self.get_impersonation_token(account_id)
         user = self.get_myself(impersonation=True)
         return user
-
-
-    def add_community_member_by_user_id(self, user_id: int, community_id: int):
-        '''
-        Requires user impersonation, which is only available in the Enterprise tier
-        '''
-        account_id = self.get_account_id_by_user_id(user_id)
-        updated_community = self.add_community_member_by_account_id(account_id, community_id)
-        return updated_community
-
-
-    def add_community_member_by_email(self, email: str, community_id: int):
-        '''
-        Requires user impersonation, which is only available in the Enterprise tier
-        '''
-        account_id = self.get_account_id_by_email(email)
-        updated_community = self.add_community_member_by_account_id(account_id, community_id)
-        return updated_community
-
-
-    def add_community_member_by_account_id(self, account_id: int, community_id: int):
-        '''
-        Requires user impersonation, which is only available in the Enterprise tier
-        '''
-        self.impersonation_token = self.get_impersonation_token(account_id)
-        updated_community = self.join_community(community_id, impersonation=True)
-        return updated_community
     
 
     ########################
@@ -1024,7 +1037,7 @@ class StackClient(object):
         return items
     
 
-    def add_item(self, endpoint: str, params: dict, impersonation: bool=False):
+    def add_item(self, endpoint: str, params: dict={}, impersonation: bool=False):
 
         method = POST
 

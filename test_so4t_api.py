@@ -1,11 +1,17 @@
 """
 Much of the testing requires admin permissions, particular when checking the deletion status of
-content. 
+content or looking up users by email address.
 
 For Stack Overflow Enterprise, turn off duplicate checking at this URL (requires admin):
 <SITE_URL>/developer/site-settings/edit?name=Questions.Testing.EnableDuplicateCheckForQuestions
 
 Otherwise, the testing will fail since it creates the same content over and over. 
+
+There is no endpoint for deleting user groups, so user groups created during testing will need to 
+be cleaned up (deleted) manually.
+
+There is not endpoint for creating communities, so at least one community must be created manually
+prior to testing
 """
 
 import os
@@ -59,6 +65,13 @@ def user(client):
     users = client.get_users(one_page_limit=True)
     return users[0]
 
+
+@pytest.fixture(scope="class")
+def myself(client):
+    myself = client.get_myself()
+    yield myself
+
+
 @pytest.fixture(scope="class")
 def group(client, user):
 
@@ -78,6 +91,21 @@ def article(client):
 def tag(client):
     tag = client.get_tag_by_name(TEST_TAG_NAME)
     yield tag
+
+
+@pytest.fixture(scope="class")
+def community(client):
+    communities = client.get_communities()
+    validate_communities(communities)
+    community = communities[0]
+    yield community
+
+
+@pytest.fixture(scope="class")
+def search_question(client):
+    questions = client.get_questions(one_page_limit=True)
+    question = questions[0]
+    yield question
 
 
 class TestClientCreation(object):
@@ -270,7 +298,6 @@ class TestArticleMethods(object):
 
         with pytest.raises(Exception) as e:
             client.get_article_by_id(BAD_ID)
-        
         assert "404" in str(e.value)
 
     
@@ -294,7 +321,6 @@ class TestArticleMethods(object):
 
         client.delete_article(article['id'])
         article = client.get_article_by_id(article['id'])
-
         assert article['isDeleted'] == True
 
 
@@ -304,6 +330,51 @@ class TestUserMethods(object):
         users = client.get_users()
         assert type(users) == list
         assert len(users) > 0
+
+    
+    def test_get_user_by_id_happy_path(self, client, user):
+
+        user_id = user['id']
+        user = client.get_user_by_id(user_id)
+        self.assert_user_object(user)
+        assert user['id'] == user_id
+
+
+    def test_get_user_by_email_happy_path(self, client, user):
+
+        user_email = user['email']
+        user = client.get_user_by_email(user_email)
+        self.assert_user_object(user)
+        assert user['email'] == user_email
+
+
+    def test_get_account_id_by_user_id_happy_path(self, client, user):
+
+        account_id = client.get_account_id_by_user_id(user['id'])
+        self.assert_account_id(account_id)
+
+
+    def test_get_account_id_by_email_happy_path(self, client, user):
+
+        account_id = client.get_account_id_by_email(user['email'])
+        self.assert_account_id(account_id)
+
+
+    def test_get_myself_happy_path(self, client):
+
+        myself = client.get_myself()
+        self.assert_user_object(myself)
+
+
+    def assert_user_object(self, user_object):
+
+        assert type(user_object) == dict
+        assert type(user_object['accountId']) == int
+
+    
+    def assert_account_id(self, account_id):
+
+        assert type(account_id) == int
 
 
 class TestUserGroupMethods(object):
@@ -324,6 +395,118 @@ class TestUserGroupMethods(object):
         assert type(groups) == list
         assert type(groups[0]) == dict
         assert type(groups[0]['users']) == list
+
+
+    def test_get_user_group_by_id_happy_path(self, client, group):
+
+        group = client.get_user_group_by_id(group['id'])
+        assert type(group) == dict
+        assert type(group['users']) == list
+        assert type(group['description']) == str
+
+
+    def test_edit_user_group_happy_path(self, client, group):
+
+        new_name = random_string(7)
+        updated_group = client.edit_user_group(group['id'], name=new_name)
+        assert type(updated_group) == dict
+        assert updated_group['name'] == new_name
+        assert updated_group['users'] == group['users']
+        assert updated_group['description'] == group['description']
+
+
+    def test_add_users_to_group_happy_path(self, client, group, user):
+
+        group = client.edit_user_group(group['id'], user_ids=[]) # remove users
+        assert group['users'] == []
+        updated_group = client.add_users_to_group(group['id'], [user['id']])
+        assert type(updated_group) == dict
+        assert type(updated_group['users']) == list
+        assert len(updated_group['users']) == 1
+        assert user['id'] in [user['id'] for user in updated_group['users']]
+
+
+    def test_delete_user_from_group(self, client, group, user):
+
+        client.delete_user_from_group(group['id'], user['id'])
+        group = client.get_user_group_by_id(group['id'])
+        assert group['users'] == []
+
+
+class TestCommunityMethods(object):
+
+    def test_get_communities_happy_path(self, client):
+
+        communities = client.get_communities()
+        assert type(communities) == list
+        validate_communities(communities)
+        self.assert_community_object(communities[0])
+
+    
+    def test_community_by_id_happy_path(self, client, community):
+
+        community_id = community['id']
+        community = client.get_community_by_id(community_id)
+        self.assert_community_object(community)
+        assert community['id'] == community_id
+
+    
+    def test_join_community_happy_path(self, client, community, myself):
+        
+        updated_community = client.join_community(community['id'])
+        self.assert_community_object(updated_community)
+        self.assert_user_in_community(myself['id'], updated_community)
+    
+
+    def test_leave_community_happy_path(self, client, community, myself):
+        
+        updated_community = client.leave_community(community['id'])
+        self.assert_community_object(updated_community)
+        self.assert_user_not_in_community(myself['id'], updated_community)
+
+
+    def test_add_users_to_community_happy_path(self, client, community, user):
+
+        updated_community = client.add_users_to_community(community['id'], [user['id']])
+        self.assert_community_object(updated_community)
+        self.assert_user_in_community(user['id'], updated_community)
+
+    
+    def test_remove_users_from_community_happy_path(self, client, community, user):
+
+        updated_community = client.remove_users_from_community(community['id'], [user['id']])
+        self.assert_community_object(updated_community)
+        self.assert_user_not_in_community(user['id'], updated_community)
+
+    def assert_community_object(self, community_object):
+        assert type(community_object) == dict
+        assert type(community_object['memberCount']) == int
+
+
+    def assert_user_in_community(self, user_id, community):
+        assert user_id in [member['id'] for member in community["members"]]
+    
+
+    def assert_user_not_in_community(self, user_id, community):
+        assert user_id not in [member['id'] for member in community["members"]]
+    
+
+
+class TestSearchMethods(object):
+
+    def test_get_search_results_happy_path(self, client, search_question):
+        
+        results = client.get_search_results(search_question['title'])
+
+        search_match = None
+        for result in results:
+            if result['title'] == search_question['title']:
+                search_match = result
+                break
+               
+        assert type(search_match) == dict
+        assert search_match['tags'] == search_question['tags']
+        assert search_question['creationDate'] in search_match['creationDate']
 
 
 class TestTagMethods(object):
@@ -420,8 +603,6 @@ class TestTagMethods(object):
         """Removes all SMES from a tag to create a blank slate for testing"""
         no_smes = client.edit_tag_smes(tag['id'], [], [])
 
-        
-
 
 class TestImpersonationMethods(object):
     def test_get_impersonation_token_happy_path(self, client, user):
@@ -483,3 +664,15 @@ def test_clean_up_articles_created_by_tests(client):
 
 def random_string(length):
     return ''.join(random.choice(string.ascii_letters) for x in range(length))
+
+
+def validate_communities(communities):
+
+    if not communities:
+        raise NoObjectTypeError("There are no communities available to complete test. "
+                                "Create at least one community and rerun tests.")
+
+
+class NoObjectTypeError(Exception):
+    """If there are no objects required for testing"""
+    pass
