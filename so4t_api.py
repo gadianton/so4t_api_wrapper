@@ -165,10 +165,10 @@ class StackClient(object):
             "hasAcceptedAnswer": has_accepted_answer if isinstance(has_accepted_answer, bool) 
                 else None,
             "questionId": question_id if isinstance(question_id, list) else None,
-            "tagId": tag_id if tag_id is None or isinstance(tag_id, list) else None,
-            "authorId": author_id if author_id is None or isinstance(author_id, int) else None,
-            "from": start_date if start_date is None or isinstance(start_date, str) else None,
-            "to": end_date if end_date is None or isinstance(end_date, str) else None
+            "tagId": tag_id if isinstance(tag_id, list) else None,
+            "authorId": author_id if isinstance(author_id, int) else None,
+            "from": start_date if isinstance(start_date, str) else None,
+            "to": end_date if isinstance(end_date, str) else None
         }
         logging.debug(f"Getting questions with params: {params}")
         
@@ -429,9 +429,9 @@ class StackClient(object):
             'sort': sort if isinstance(sort, str) else 'creation',
             "order": order if order in ['asc', 'desc'] else 'asc',
             "tagId": tag_ids if isinstance(tag_ids, list) else None,
-            "authorId": author_id if author_id is None or isinstance(author_id, int) else None,
-            "from": start_date if start_date is None or isinstance(start_date, str) else None,
-            "to": end_date if end_date is None or isinstance(end_date, str) else None
+            "authorId": author_id if isinstance(author_id, int) else None,
+            "from": start_date if isinstance(start_date, str) else None,
+            "to": end_date if isinstance(end_date, str) else None
         }
 
         articles = self.get_items(endpoint, params, one_page_limit=one_page_limit)
@@ -849,16 +849,87 @@ class StackClient(object):
     ### COLLECTION METHODS ###
     ##########################
 
-    def get_collections(self) -> list:
-                
+    def get_collections(self, page: int=None, pagesize: int=None,
+                    sort: str=None, order: str=None,
+                    partial_title: str=None, author_ids: list=None,
+                    permissions: str=None,
+                    start_date: str=None, end_date: str=None,
+                    one_page_limit: bool=False) -> list:
+        """
+        sort can be 'creation' or 'lastEdit'
+        permissions can be 'all', 'owned', or 'editable'
+        """
         endpoint = "/collections"
         params = {
-            'page': 1,
-            'pagesize': 100,
+            'page': page if isinstance(page, int) else 1,
+            'pageSize': pagesize if pagesize in [15, 30, 50, 100] else 100,
+            'sort': sort if isinstance(sort, str) else 'creation',
+            "order": order if order in ['asc', 'desc'] else 'asc',
+            "partialTitle": partial_title if isinstance(partial_title, str) else None,
+            "permissions": permissions if isinstance(permissions, str) else 'all',
+            "authorIds": author_ids if isinstance(author_ids, list) else None,
+            "from": start_date if isinstance(start_date, str) else None,
+            "to": end_date if isinstance(end_date, str) else None
         }
 
-        collections = self.get_items(endpoint, params)
+        collections = self.get_items(endpoint, params, one_page_limit=one_page_limit)
         return collections
+    
+
+    def get_collection_by_id(self, collection_id: int) -> dict:
+
+        endpoint = f"/collections/{collection_id}"
+        collection = self.get_items(endpoint)
+        return collection
+    
+
+    def add_collection(self, title: str, description: str="", content_ids: list=[],
+                       editor_user_ids: list=[], editor_user_group_ids: list=[]) -> dict:
+
+        endpoint = "/collections"
+        params = {
+            'title': title,
+            'description': description,
+            'editorUserIds': editor_user_ids,
+            'editorUserGroupIds': editor_user_group_ids,
+            'contentIds': content_ids
+        }
+
+        collection = self.add_item(endpoint, params)
+        return collection
+    
+
+    def edit_collection(self, collection_id: int, owner_id: int=None, 
+                        title: str=None, description: str=None,
+                        content_ids: list=None, editor_user_ids: list=None, 
+                        editor_user_group_ids: list=None) -> dict:
+
+        
+        endpoint = f"/collections/{collection_id}"
+        if None in [owner_id, title, description, content_ids, editor_user_group_ids, 
+                    editor_user_ids]:
+            original_collection = self.get_collection_by_id(collection_id)
+
+        params = {
+            'ownerId': owner_id if owner_id != None else original_collection['owner']['id'],
+            'title': title if title != None else original_collection['title'],
+            'description': description if description != None else 
+                original_collection['description'],
+            'editorUserIds': editor_user_ids if editor_user_ids != None else 
+                [user['id'] for user in original_collection['editorUsers']],
+            'editorUserGroupIds': editor_user_group_ids if editor_user_group_ids != None else
+                [group['id'] for group in original_collection['editorUserGroups']],
+            'contentIds': content_ids if content_ids != None else 
+                [content['id'] for content in original_collection['content']]
+        }
+        edited_collection = self.edit_item(endpoint, params)
+        return edited_collection
+    
+
+    def delete_collection(self, collection_id: int):
+
+        endpoint = f"/collections/{collection_id}"
+        self.delete_item(endpoint)
 
 
     #############################

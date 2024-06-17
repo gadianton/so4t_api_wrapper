@@ -33,6 +33,7 @@ TEST_BODY = "I am trying to make API calls using Python's requests library, but 
 TEST_TYPE = "knowledgeArticle"
 TEST_TAGS = ["python", "requests", "api", "cheesepuffs"]
 TEST_TAG_NAME = "cheesepuffs"
+TEST_COLLECTION_TITLE = "Cheese Puffs"
 TEST_DESCRIPTION = "For all fans of cheese puffs"
 EDITED_TITLE = "This has been changed to something new"
 BAD_ID = 99999999
@@ -99,6 +100,12 @@ def community(client):
     validate_communities(communities)
     community = communities[0]
     yield community
+
+
+@pytest.fixture(scope="class")
+def collection(client):
+    collection = client.add_collection(TEST_COLLECTION_TITLE, TEST_DESCRIPTION)
+    yield collection
 
 
 @pytest.fixture(scope="class")
@@ -324,6 +331,101 @@ class TestArticleMethods(object):
         assert article['isDeleted'] == True
 
 
+class TestTagMethods(object):
+
+    def test_get_tags_happy_path(self, client):
+
+        tags = client.get_tags()
+        assert type(tags) == list
+        assert len(tags) > 0
+
+    
+    def test_get_tag_by_name_happy_path(self, client):
+
+        tag = client.get_tag_by_name(TEST_TAG_NAME)
+        assert tag['name'] == TEST_TAG_NAME
+
+    
+    def test_get_tag_by_id_happy_path(self, client, tag):
+
+        tag = client.get_tag_by_id(tag['id'])
+        assert type(tag) == dict
+        assert tag['name'] == TEST_TAG_NAME
+
+    
+    def test_get_tag_smes_happy_path(self, client, tag):
+
+        smes = client.get_tag_smes(tag['id'])
+        assert type(smes) == dict
+        assert type(smes['users']) == list
+        assert type(smes['userGroups']) == list
+
+
+    def test_edit_tag_smes_happy_path(self, client, tag, user, group):
+
+        edited_smes = client.edit_tag_smes(tag['id'], [user['id']], [group['id']])
+        assert type(edited_smes) == dict
+        assert len(edited_smes['users']) == 1
+        assert edited_smes['users'][0]['id'] == user['id']
+        # assert len(edited_smes['userGroups']) == 1
+        assert group['id'] in [group['id'] for group in edited_smes['userGroups']]
+
+
+    def test_add_sme_users_happy_path(self, client, tag, user):
+
+        self.reset_smes(client, tag)
+        updated_smes = client.add_sme_users(tag['id'], [user['id']])
+        assert type(updated_smes) == dict
+        assert len(updated_smes['users']) == 1
+        assert updated_smes['users'][0]['id'] == user['id']
+        # assert len(updated_smes['userGroups']) == 0
+
+    
+    def test_add_sme_groups_happy_path(self, client, tag, group):
+
+        self.reset_smes(client, tag)
+        updated_smes = client.add_sme_groups(tag['id'], [group['id']])
+        assert type(updated_smes) == dict
+        assert len(updated_smes['users']) == 0
+        # assert len(updated_smes['userGroups']) == 1
+        assert group['id'] in [group['id'] for group in updated_smes['userGroups']]
+
+
+    def test_remove_sme_user_happy_path(self, client, tag, user):
+
+        tag_id = tag['id']
+        user_id = user['id']
+        smes = client.add_sme_users(tag_id, [user_id])
+        client.remove_sme_user(tag_id, user_id)
+        smes = client.get_tag_smes(tag_id)
+        assert user_id not in [user['id'] for user in smes['users']]
+
+    
+    def test_remove_sme_group_happy_path(self, client, tag, group):
+
+        tag_id = tag['id']
+        group_id = group['id']
+        smes = client.add_sme_groups(tag_id, [group_id])
+        client.remove_sme_group(tag_id, group_id)
+        smes = client.get_tag_smes(tag_id)
+        assert group_id not in [group['id'] for group in smes['userGroups']]
+
+
+    def test_get_all_tags_and_smes_happy_path(self, client):
+
+        tags = client.get_all_tags_and_smes()
+        assert type(tags) == list
+        assert type(tags[0]) == dict
+        assert type(tags[0]['smes']) == dict
+        assert type(tags[0]['smes']['users']) == list
+        assert type(tags[0]['smes']['userGroups']) == list
+
+
+    def reset_smes(self, client, tag):
+        """Removes all SMES from a tag to create a blank slate for testing"""
+        no_smes = client.edit_tag_smes(tag['id'], [], [])
+
+
 class TestUserMethods(object):
     def test_get_users_happy_path(self, client):
 
@@ -491,6 +593,53 @@ class TestCommunityMethods(object):
         assert user_id not in [member['id'] for member in community["members"]]
     
 
+class TestCollectionMethods(object):
+
+    def test_add_collection_happy_path(self, client, question, article):
+
+        content_ids = [question['id'], article['id']]
+        collection = client.add_collection(TEST_COLLECTION_TITLE, content_ids=content_ids)
+        self.assert_collection_object(collection)
+        self.assert_content_in_collection(question['id'], collection)
+        self.assert_content_in_collection(article['id'], collection)
+
+
+    def test_get_collection_by_id_happy_path(self, client, collection):
+
+        collection_id = collection['id']
+        collection = client.get_collection_by_id(collection_id)
+        self.assert_collection_object(collection)
+        assert collection['id'] == collection_id
+
+    
+    def test_edit_collection_happy_path(self, client, collection):
+
+        new_title = "New Collection Name"
+        updated_collection = client.edit_collection(collection['id'], title=new_title)
+        self.assert_collection_object(updated_collection)
+        assert updated_collection['title'] == new_title
+        assert updated_collection['description'] == collection['description']
+        assert updated_collection['content'] == collection['content']
+        assert updated_collection['id'] == collection['id']
+
+
+    def test_delete_collection_happy_path(self, client, collection):
+
+        client.delete_collection(collection['id'])
+        deleted_collection = client.get_collection_by_id(collection['id'])
+        assert deleted_collection['isDeleted'] == True
+
+
+    def assert_collection_object(self, collection):
+
+        assert type(collection) == dict
+        assert type(collection['content']) == list
+
+
+    def assert_content_in_collection(self, content_id, collection):
+
+        assert content_id in [content['id'] for content in collection['content']]
+
 
 class TestSearchMethods(object):
 
@@ -507,101 +656,6 @@ class TestSearchMethods(object):
         assert type(search_match) == dict
         assert search_match['tags'] == search_question['tags']
         assert search_question['creationDate'] in search_match['creationDate']
-
-
-class TestTagMethods(object):
-
-    def test_get_tags_happy_path(self, client):
-
-        tags = client.get_tags()
-        assert type(tags) == list
-        assert len(tags) > 0
-
-    
-    def test_get_tag_by_name_happy_path(self, client):
-
-        tag = client.get_tag_by_name(TEST_TAG_NAME)
-        assert tag['name'] == TEST_TAG_NAME
-
-    
-    def test_get_tag_by_id_happy_path(self, client, tag):
-
-        tag = client.get_tag_by_id(tag['id'])
-        assert type(tag) == dict
-        assert tag['name'] == TEST_TAG_NAME
-
-    
-    def test_get_tag_smes_happy_path(self, client, tag):
-
-        smes = client.get_tag_smes(tag['id'])
-        assert type(smes) == dict
-        assert type(smes['users']) == list
-        assert type(smes['userGroups']) == list
-
-
-    def test_edit_tag_smes_happy_path(self, client, tag, user, group):
-
-        edited_smes = client.edit_tag_smes(tag['id'], [user['id']], [group['id']])
-        assert type(edited_smes) == dict
-        assert len(edited_smes['users']) == 1
-        assert edited_smes['users'][0]['id'] == user['id']
-        # assert len(edited_smes['userGroups']) == 1
-        assert group['id'] in [group['id'] for group in edited_smes['userGroups']]
-
-
-    def test_add_sme_users_happy_path(self, client, tag, user):
-
-        self.reset_smes(client, tag)
-        updated_smes = client.add_sme_users(tag['id'], [user['id']])
-        assert type(updated_smes) == dict
-        assert len(updated_smes['users']) == 1
-        assert updated_smes['users'][0]['id'] == user['id']
-        # assert len(updated_smes['userGroups']) == 0
-
-    
-    def test_add_sme_groups_happy_path(self, client, tag, group):
-
-        self.reset_smes(client, tag)
-        updated_smes = client.add_sme_groups(tag['id'], [group['id']])
-        assert type(updated_smes) == dict
-        assert len(updated_smes['users']) == 0
-        # assert len(updated_smes['userGroups']) == 1
-        assert group['id'] in [group['id'] for group in updated_smes['userGroups']]
-
-
-    def test_remove_sme_user_happy_path(self, client, tag, user):
-
-        tag_id = tag['id']
-        user_id = user['id']
-        smes = client.add_sme_users(tag_id, [user_id])
-        client.remove_sme_user(tag_id, user_id)
-        smes = client.get_tag_smes(tag_id)
-        assert user_id not in [user['id'] for user in smes['users']]
-
-    
-    def test_remove_sme_group_happy_path(self, client, tag, group):
-
-        tag_id = tag['id']
-        group_id = group['id']
-        smes = client.add_sme_groups(tag_id, [group_id])
-        client.remove_sme_group(tag_id, group_id)
-        smes = client.get_tag_smes(tag_id)
-        assert group_id not in [group['id'] for group in smes['userGroups']]
-
-
-    def test_get_all_tags_and_smes_happy_path(self, client):
-
-        tags = client.get_all_tags_and_smes()
-        assert type(tags) == list
-        assert type(tags[0]) == dict
-        assert type(tags[0]['smes']) == dict
-        assert type(tags[0]['smes']['users']) == list
-        assert type(tags[0]['smes']['userGroups']) == list
-
-
-    def reset_smes(self, client, tag):
-        """Removes all SMES from a tag to create a blank slate for testing"""
-        no_smes = client.edit_tag_smes(tag['id'], [], [])
 
 
 class TestImpersonationMethods(object):
