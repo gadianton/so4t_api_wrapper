@@ -89,7 +89,21 @@ class StackClient(object):
 
     
     def test_api_connection(self):
+        """
+        Test the API connection by making a request to a test endpoint.
 
+        This method sends a request to a test endpoint ("/users/me") to check the API connection.
+        If an SSLError occurs during the request, it attempts to make a GET request to the base URL with SSL verification turned off.
+        If the error is specific to an SSL error and the base URL is correct, it raises a `BadURLError`.
+        If a general connection error occurs, it raises a `BadURLError`.
+
+        Raises:
+            BadURLError: If there is an issue with the URL or a connection error.
+            SSLError: If there is an SSL error during the API connection.
+
+        Returns:
+            None
+        """
         test_endpoint = "/users/me"
 
         logging.info("Testing API v3 connection...")
@@ -121,7 +135,8 @@ class StackClient(object):
                       question_id: list=None, tag_id: list = None, author_id: int = None,
                       start_date: str = None, end_date: str = None,
                       one_page_limit: bool=False) -> list:
-        """Returns a list of questions on the site.
+        """
+        Returns a list of questions on the site.
 
         Using the default method (not passing any parameters) will result in returning all
         question objects in the Stack Overflow for Teams instances.
@@ -177,7 +192,8 @@ class StackClient(object):
 
 
     def get_question_by_id(self, question_id: int) -> dict:
-        """Retrieve a question by its ID.
+        """
+        Retrieve a question by its ID.
 
         Args:
             question_id (int): The unique identifier of the question to retrieve.
@@ -191,7 +207,8 @@ class StackClient(object):
 
 
     def get_all_questions_and_answers(self) -> list:
-        """Combines API calls for questions and answers to create a list of questions with a list
+        """
+        Combines API calls for questions and answers to create a list of questions with a list
         of answers nested within each question object.
 
         Returns:
@@ -232,7 +249,8 @@ class StackClient(object):
     
 
     def get_question_by_id(self, question_id: int) -> dict:
-        """Retrieve a question by its ID.
+        """
+        Retrieve a question by its ID.
 
         Args:
             question_id (int): The unique identifier of the question to retrieve.
@@ -247,7 +265,8 @@ class StackClient(object):
     
 
     def add_question(self, title: str, body: str, tags: list, impersonation: bool=False) -> dict:
-        """Create a new question in the system.
+        """
+        Create a new question in the system.
 
         Args:
             title (str): The title of the question.
@@ -271,8 +290,9 @@ class StackClient(object):
 
     def edit_question(self, question_id: int, title: str=None, body:str=None, 
                             tags: list=None) -> dict:
-        """Edit all or part of a question by providing new title, body, and/or tags, leaving
-            the other parts of the question the same. 
+        """
+        Edit all or part of a question by providing new title, body, and/or tags, leaving
+        the other parts of the question the same. 
         
         The default API endpoint offers too much opportunity for the user to accidentally
         overwrite portions of a question that they did not intend to. This wrapper method allows 
@@ -307,7 +327,8 @@ class StackClient(object):
 
 
     def get_question_comments(self, question_id: int) -> list:
-        """Retrieve comments for a specific question identified by its ID.
+        """
+        Retrieve comments for a specific question identified by its ID.
 
         Args:
             question_id (int): The unique identifier of the question for which comments are to be retrieved.
@@ -322,7 +343,15 @@ class StackClient(object):
 
 
     def delete_question(self, question_id: int):
-    
+        """
+        Delete a question from the Stack Overflow for Teams instance.
+
+        Args:
+            question_id (int): The unique identifier of the question to be deleted.
+
+        Returns:
+            None
+        """
         endpoint = f"/questions/{question_id}"
         self.delete_item(endpoint)
         # Aside from an HTTP 204 response, there is nothing to return
@@ -334,7 +363,23 @@ class StackClient(object):
 
     def get_answers(self, question_id: int, page: int=None, pagesize: int=None,
                     sort: str=None, order: str=None) -> list:
+        """
+    Retrieve a list of answers for a specific question identified by its ID.
 
+    Args:
+        question_id (int): The unique identifier of the question for which answers are to be 
+            retrieved.
+        page (int, optional): The pagination offset response. Defaults to 1.
+        pagesize (int, optional): The number of answers per page. Can be 15, 30, 50, or 100. 
+            Defaults to 100.
+        sort (str, optional): The field by which the answers should be sorted. 
+            Can be 'creation'. Defaults to 'creation'.
+        order (str, optional): The order in which the answers should be sorted. 
+            Can be 'asc' (ascending) or 'desc' (descending). Defaults to 'desc'.
+
+    Returns:
+        list: A list of answers for the specified question, based on the provided criteria.
+    """
         endpoint = f"/questions/{question_id}/answers"
         params = {
             'page': page if isinstance(page, int) else 1,
@@ -346,15 +391,35 @@ class StackClient(object):
         return answers
 
 
-    def get_answer_by_id(self, question_id: int, answer_id: int):
+    def get_answer_by_id(self, question_id: int, answer_id: int) -> dict:
+        """
+        Retrieve a specific answer by its ID for a given question.
 
+        Args:
+            question_id (int): The unique identifier of the question to which the answer belongs.
+            answer_id (int): The unique identifier of the answer to retrieve.
+
+        Returns:
+            dict: A dictionary containing the details of the answer as returned by the API.
+        """
         endpoint = f"/questions/{question_id}/answers/{answer_id}"
         answer = self.get_items(endpoint)
         return answer
 
 
-    def add_answer(self, question_id: int, body: str, impersonation: bool=False):
-   
+    def add_answer(self, question_id: int, body: str, impersonation: bool=False) -> dict:
+        """
+        Add a new answer to a specific question.
+
+        Args:
+            question_id (int): The unique identifier of the question to which the answer belongs.
+            body (str): The body content of the answer.
+            impersonation (bool, optional): Flag indicating whether the answer should be added 
+                using user impersonation. Defaults to False.
+
+        Returns:
+            dict: A dictionary representing the newly created answer.
+        """
         endpoint = f"/questions/{question_id}/answers"
         params = {
             "body": body,
@@ -365,14 +430,37 @@ class StackClient(object):
 
 
     def get_answer_comments(self, question_id: int, answer_id: int) -> list:
+        """
+        Retrieve comments for a specific answer identified by its question ID and answer ID.
 
+        Args:
+            question_id (int): The unique identifier of the question to which the answer belongs.
+            answer_id (int): The unique identifier of the answer for which comments are to be retrieved.
+
+        Returns:
+            list: A list of dictionaries representing comments associated with the specified answer.
+        """
         endpoint = f"/questions/{question_id}/answers/{answer_id}/comments"
         comments = self.get_items(endpoint)
         return comments
 
 
     def get_all_answers(self) -> list:
+        """
+        Retrieve all answers for all questions.
 
+        This method retrieves all answers for all questions available in the Stack Overflow for 
+        Teams instance. 
+            * It first fetches all questions using the 'get_all_questions' method. 
+            * Then, for each question, it retrieves the answers using the 'get_answers' method. 
+            * For each answer, it adds a key 'questionTags' containing the tags of the 
+                corresponding question. 
+            * Finally, it returns a list of all answers.
+
+        Returns:
+            list: A list of dictionaries representing answers, where each answer dictionary includes the 
+                question tags it belongs to.
+        """
         questions = self.get_all_questions()
 
         all_answers = []
@@ -387,7 +475,17 @@ class StackClient(object):
 
 
     def delete_answer(self, question_id: int, answer_id: int):
+        """
+        Delete a specific answer from a question in the Stack Overflow for Teams instance.
 
+        Args:
+            question_id (int): The unique identifier of the question from which the answer will be 
+                deleted.
+            answer_id (int): The unique identifier of the answer to be deleted.
+
+        Returns:
+            None
+        """
         endpoint = f"/questions/{question_id}/answers/{answer_id}"
         self.delete_item(endpoint)
 
@@ -401,7 +499,8 @@ class StackClient(object):
                     tag_ids: list=None, author_id: int=None,
                     start_date: str=None, end_date: str=None,
                     one_page_limit: bool=False) -> list:
-        """Retrieve a list of articles based on the specified criteria.
+        """
+        Retrieve a list of articles based on the specified criteria.
 
         Args:
             page (int, optional): The pagination offset response. Defaults to 1.
@@ -439,7 +538,15 @@ class StackClient(object):
 
 
     def get_article_by_id(self, article_id: int) -> dict:
+        """
+        Retrieve a specific article by its ID.
 
+        Args:
+            article_id (int): The unique identifier of the article to retrieve.
+
+        Returns:
+            dict: A dictionary containing the details of the article as returned by the API.
+        """
         endpoint = f"/articles/{article_id}"
         article = self.get_items(endpoint)
         return article
@@ -448,7 +555,8 @@ class StackClient(object):
     def add_article(self, title: str, body: str, article_type: str, tags: list, 
                     editable_by: str='ownerOnly', editor_user_ids: list=[], 
                     editor_user_group_ids: list=[], impersonation=False) -> dict:
-        """Create a new article in the system.
+        """
+        Create a new article in the system.
 
         Args:
             title (str): The title of the article.
@@ -489,7 +597,39 @@ class StackClient(object):
                      article_type: str=None, tags: list=None, editable_by: str=None, 
                      editor_user_ids: list=None, editor_user_group_ids: list=None, 
                      impersonation=False) -> dict:
-        
+        """
+        Edit all or part of a article by providing new title, body, and/or tags, leaving
+        the other parts of the article the same. 
+
+        The default API endpoint offers too much opportunity for the user to accidentally
+        overwrite portions of an article that they did not intend to. This wrapper method allows 
+        the user to submit which article fields they wish to edit. The remaining fields will be 
+        filled in by performing an API call to obtain the current state of the article.
+
+        Args:
+            article_id (int): The unique identifier of the article to be edited.
+            title (str, optional): The new title for the article. If not provided, the original 
+                title will be used.
+            body (str, optional): The new body content for the article. If not provided, the 
+                original body will be used.
+            article_type (str, optional): The new type for the article. If not provided, the 
+                original type will be used.
+            tags (list of str, optional): A list of strings representing the new tags for the 
+                article. If not provided, the original tags will be used.
+            editable_by (str, optional): Who can edit the article. Must be one of: 
+                'ownerOnly', 'specificEditors', or 'everyone'. If not provided, the original 
+                editableBy value will be used.
+            editor_user_ids (list of int, optional): A list of integers representing specific users
+                who can edit the article. If not provided, the original editorUserIds will be used.
+            editor_user_group_ids (list of int, optional): A list of integers representing user 
+                groups who can edit the article. If not provided, the original editorUserGroupIds 
+                will be used.
+            impersonation (bool, optional): Flag indicating whether the article should be 
+                edited using user impersonation. Defaults to False.
+
+        Returns:
+            dict: A dictionary containing the edited article details as returned by the API.
+        """
         endpoint = f"/articles/{article_id}"
 
         if None in [title, body, article_type, tags, editable_by, editor_user_ids, 
@@ -516,7 +656,15 @@ class StackClient(object):
 
 
     def delete_article(self, article_id):
+        """
+        Delete a specific article from the Stack Overflow for Teams instance.
 
+        Args:
+            article_id (int): The unique identifier of the article to be deleted.
+
+        Returns:
+            None
+        """
         endpoint = f"/articles/{article_id}"
         self.delete_item(endpoint)
 
@@ -529,7 +677,26 @@ class StackClient(object):
                     sort: str=None, order: str=None,
                     partial_name: str=None, has_smes: bool= None,
                     one_page_limit: bool=False) -> list:
+        """
+        Retrieve a list of tags based on the specified criteria.
 
+        Args:
+            page (int, optional): The page number for pagination. Defaults to 1.
+            pagesize (int, optional): The number of tags per page. Can be 15, 30, 50, or 100. 
+                Defaults to 100.
+            sort (str, optional): The field by which the tags should be sorted. 
+                Defaults to 'creationDate'.
+            order (str, optional): The order in which the tags should be sorted. 
+                Can be 'asc' (ascending) or 'desc' (descending). Defaults to 'asc'.
+            partial_name (str, optional): A partial name to filter tags by. Defaults to None.
+            has_smes (bool, optional): Flag indicating whether the tags should contain subject 
+                matter experts. Defaults to None.
+            one_page_limit (bool, optional): Flag indicating whether to limit the results to one 
+                page. Defaults to False.
+
+        Returns:
+            list: A list of tags matching the specified criteria.
+        """
         endpoint = "/tags"
         params = {
             'page': page if isinstance(page, int) else 1,
@@ -545,14 +712,37 @@ class StackClient(object):
 
 
     def get_tag_by_id(self, tag_id: int) -> dict:
+        """
+        Retrieve a specific tag by its ID.
 
+        Args:
+            tag_id (int): The unique identifier of the tag to retrieve.
+
+        Returns:
+            dict: A dictionary containing the details of the tag as returned by the API.
+        """
         endpoint = f"/tags/{tag_id}"
         tag = self.get_items(endpoint)
         return tag
     
 
     def get_tag_by_name(self, tag_name: str) -> int:
-        
+        """
+        Retrieve a specific tag by its name.
+
+        This method takes a tag name as input and searches for a tag with an exact match to the provided name.
+        If a tag with the exact name is found, the method returns the tag details in a dictionary format.
+        If no tag with the exact name is found, a `NotFoundError` is raised.
+
+        Args:
+            tag_name (str): The name of the tag to retrieve.
+
+        Returns:
+            dict: A dictionary containing the details of the tag if found.
+
+        Raises:
+            NotFoundError: If no tags match the provided tag name.
+        """
         tags = self.get_tags(partial_name=tag_name.lower())
         
         for tag in tags:
@@ -563,15 +753,36 @@ class StackClient(object):
     
 
     def get_tag_smes(self, tag_id):
+        """
+        Retrieve the subject matter experts (SMEs) associated with a specific tag identified by 
+        its ID.
 
+        Args:
+            tag_id (int): The unique identifier of the tag for which SMEs are to be retrieved.
+
+        Returns:
+            list: A list of dictionaries representing the SMEs associated with the specified tag.
+        """
         endpoint = f"/tags/{tag_id}/subject-matter-experts"
         smes = self.get_items(endpoint)
         return smes
     
 
     def edit_tag_smes(self, tag_id: int, user_ids: list=[], group_ids: list=[]) -> dict:
-        """ Overwrites all existing tag SMEs with the provided parameters
-        
+        """
+        Edit the subject matter experts (SMEs) associated with a specific tag identified by its ID.
+        This method overwrites all existing SMEs for the specified tag with the provided 
+        parameters.
+
+        Args:
+            tag_id (int): The unique identifier of the tag for which SMEs are to be edited.
+            user_ids (list): A list of integers representing specific users to be set as SMEs for 
+                the tag.
+            group_ids (list): A list of integers representing user groups to be set as SMEs for 
+                the tag.
+
+        Returns:
+            dict: A dictionary containing the edited SMEs details as returned by the API.
         """
         endpoint = f"/tags/{tag_id}/subject-matter-experts"
         params = {
@@ -583,7 +794,17 @@ class StackClient(object):
 
 
     def add_sme_users(self, tag_id: int, user_ids: list) -> dict:
+        """
+        Add subject matter expert (SME) users to a specific tag identified by its ID.
 
+        Args:
+            tag_id (int): The unique identifier of the tag for which SME users are to be added.
+            user_ids (list): A list of integers representing specific users to be set as SMEs 
+                for the tag.
+
+        Returns:
+            dict: A dictionary containing the updated SME details as returned by the API.
+        """
         endpoint = f"/tags/{tag_id}/subject-matter-experts/users"
         params = user_ids
         updated_smes = self.add_item(endpoint, params)
@@ -591,7 +812,18 @@ class StackClient(object):
 
 
     def add_sme_groups(self, tag_id: int, group_ids: list) -> dict:
+        """
+        Add subject matter expert (SME) user groups to a specific tag identified by its ID.
 
+        Args:
+            tag_id (int): The unique identifier of the tag for which SME user groups are to be 
+                added.
+            group_ids (list): A list of integers representing user groups to be set as SMEs for 
+                the tag.
+
+        Returns:
+            dict: A dictionary containing the updated SME details as returned by the API.
+        """
         endpoint = f"/tags/{tag_id}/subject-matter-experts/user-groups"
         params = group_ids
         updated_smes = self.add_item(endpoint, params)
@@ -599,19 +831,53 @@ class StackClient(object):
 
 
     def remove_sme_user(self, tag_id: int, user_id: int):
+        """
+        Remove a specific user from the subject matter experts (SMEs) associated with a specific 
+        tag.
 
+        Args:
+            tag_id (int): The unique identifier of the tag from which the user is to be removed.
+            user_id (int): The unique identifier of the user to be removed from the SMEs of the 
+                tag.
+
+        Returns:
+            None
+        """
         endpoint = f"/tags/{tag_id}/subject-matter-experts/users/{user_id}"
         self.delete_item(endpoint)
 
 
     def remove_sme_group(self, tag_id: int, group_id: int):
+        """
+        Remove a specific user group from the subject matter experts (SMEs) associated with a 
+        specific tag.
 
+        Args:
+            tag_id (int): The unique identifier of the tag from which the user group is to 
+                be removed.
+            group_id (int): The unique identifier of the user group to be removed from the 
+                SMEs of the tag.
+
+        Returns:
+            None
+        """
         endpoint = f"/tags/{tag_id}/subject-matter-experts/user-groups/{group_id}"
         self.delete_item(endpoint)
 
 
     def get_all_tags_and_smes(self) -> list:
+        """
+        Retrieve all tags and their associated subject matter experts (SMEs).
 
+        This method fetches all tags available in the Stack Overflow for Teams instance and, 
+        for each tag, retrieves the associated SMEs. If a tag has SMEs, it includes a list 
+        of users and user groups under the 'smes' key in the tag dictionary. If a tag has no 
+        SMEs, it includes an empty list for both users and user groups.
+
+        Returns:
+            list: A list of dictionaries representing tags, where each tag dictionary may 
+                include a list of SMEs under the 'smes' key.
+        """
         tags = self.get_tags()
 
         for tag in tags:
@@ -631,7 +897,23 @@ class StackClient(object):
                   page: int = None, pagesize: int = None,
                   sort: str = None, order: str = None, 
                   one_page_limit: bool=False) -> list:
-        
+        """
+        Retrieve a list of users from the Stack Overflow for Teams instance.
+
+        Args:
+            page (int, optional): The page number for pagination. Defaults to 1.
+            pagesize (int, optional): The number of users per page. Can be 15, 30, 50, or 100. 
+                Defaults to 100.
+            sort (str, optional): The field by which the users should be sorted. 
+                Defaults to 'reputation'.
+            order (str, optional): The order in which the users should be sorted. 
+                Can be 'asc' (ascending) or 'desc' (descending). Defaults to 'desc'.
+            one_page_limit (bool, optional): Flag indicating whether to limit the results to one 
+                page. Defaults to False.
+
+        Returns:
+            list: A list of users matching the specified criteria.
+        """
         endpoint = "/users"
         params = {
             'page': page if isinstance(page, int) else 1,
@@ -645,7 +927,15 @@ class StackClient(object):
     
 
     def get_user_by_id(self, user_id: int) -> dict:
+        """
+        Retrieve a specific user by their ID.
 
+        Args:
+            user_id (int): The unique identifier of the user to retrieve.
+
+        Returns:
+            dict: A dictionary containing the details of the user as returned by the API.
+        """
         endpoint = f"/users/{user_id}"
         user = self.get_items(endpoint)
         return user
@@ -653,8 +943,16 @@ class StackClient(object):
 
     def get_user_by_email(self, email: str) -> dict:
         """
-        Requires admin permissions; only admins can see a user's email address via API.
-        Email is not case-sensitive.
+        Retrieve a specific user by their email address.
+
+        This method requires admin permissions, as only admins can access a user's email 
+        address via the API. The email comparison is not case-sensitive.
+
+        Args:
+            email (str): The email address of the user to retrieve.
+
+        Returns:
+            dict: A dictionary containing the details of the user as returned by the API.
         """
         endpoint = f"/users/by-email/{email}"
         user = self.get_items(endpoint)
@@ -662,7 +960,16 @@ class StackClient(object):
     
 
     def get_account_id_by_user_id(self, user_id: int) -> int:
+        """
+        Helpful for other API functions that require the account ID of users, such as 
+        impersonation or SCIM.
 
+        Args:
+            user_id (int): The unique identifier of the user for which the account ID is needed.
+
+        Returns:
+            int: The account ID of the specified user.
+        """
         user = self.get_user_by_id(user_id)
         account_id = user['accountId']
         return account_id
@@ -670,8 +977,17 @@ class StackClient(object):
 
     def get_account_id_by_email(self, email: str) -> int:
         """
+        Helpful for other API functions that require the account ID of users, such as 
+        impersonation or SCIM.
+
         Requires admin permissions; only admins can see a user's email address via API.
         Email is not case-sensitive.
+
+        Args:
+            email (str): The email address of the user to retrieve the account ID for.
+
+        Returns:
+            int: The account ID of the user with the specified email address.
         """
         user = self.get_user_by_email(email)
         account_id = user['accountId']
@@ -679,7 +995,15 @@ class StackClient(object):
 
 
     def get_myself(self, impersonation: bool=False) -> dict:
+        """
+        Retrieve the details of the authenticated user.
 
+        Args:
+            impersonation (bool, optional): Flag indicating whether the request should be made using user impersonation. Defaults to False.
+
+        Returns:
+            dict: A dictionary containing the details of the authenticated user as returned by the API.
+        """
         endpoint = "/users/me"
         myself = self.get_items(endpoint, impersonation=impersonation)
         return myself
@@ -691,8 +1015,21 @@ class StackClient(object):
 
     def get_user_groups(self, page: int = None, pagesize: int = None,
                         sort: str = None, order: str = None) -> list:
-        # sort can be 'name' or 'size'
+        """
+        Retrieve a list of user groups from the Stack Overflow for Teams instance.
 
+        Args:
+            page (int, optional): The page number for pagination. Defaults to 1.
+            pagesize (int, optional): The number of user groups per page. 
+                Can be 15, 30, 50, or 100. Defaults to 100.
+            sort (str, optional): The field by which the user groups should be sorted. 
+                Can be 'name' or 'size'. Defaults to 'name'.
+            order (str, optional): The order in which the user groups should be sorted. 
+                Can be 'asc' (ascending) or 'desc' (descending). Defaults to 'desc'.
+
+        Returns:
+            list: A list of user groups matching the specified criteria.
+        """
         endpoint = "/user-groups"
         params = {
             'page': page if isinstance(page, int) else 1,
@@ -706,14 +1043,32 @@ class StackClient(object):
     
 
     def get_user_group_by_id(self, group_id: int) -> dict:
+        """
+        Retrieve a specific user group by its ID.
 
+        Args:
+            group_id (int): The unique identifier of the user group to retrieve.
+
+        Returns:
+            dict: A dictionary containing the details of the user group as returned by the API.
+        """
         endpoint = f"/user-groups/{group_id}"
         group = self.get_items(endpoint)
         return group
 
 
     def add_user_group(self, name: str, user_ids: list, description: str=None) -> dict:
+        """
+        Add a new user group to the Stack Overflow for Teams instance.
 
+        Args:
+            name (str): The name of the user group.
+            user_ids (list): A list of user IDs to be added to the user group.
+            description (str, optional): A description of the user group, defaults to None.
+
+        Returns:
+            dict: A dictionary representing the newly created user group.
+        """
         endpoint = "/user-groups"
         params = {
             "name": name,
@@ -727,7 +1082,21 @@ class StackClient(object):
 
     def edit_user_group(self, group_id: int, name: str=None, 
                         user_ids: list=None, description: str=None) -> dict:
+        """
+        Edit a user group by providing new name, user IDs, and/or description.
 
+        Args:
+            group_id (int): The unique identifier of the user group to be edited.
+            name (str, optional): The new name for the user group. If not provided, the 
+                original name will be used.
+            user_ids (list, optional): A list of integers representing specific users to 
+                be part of the user group. If not provided, the original user IDs will be used.
+            description (str, optional): The new description for the user group. If not 
+                provided, the original description will be used.
+
+        Returns:
+            dict: A dictionary containing the edited user group details as returned by the API.
+        """
         endpoint = f"/user-groups/{group_id}"
         if None in [name, user_ids, description]:
             original_group = self.get_user_group_by_id(group_id)
@@ -743,7 +1112,17 @@ class StackClient(object):
 
 
     def add_users_to_group(self, group_id: int, user_ids: list) -> dict:
+        """
+        Add users to a specific user group identified by its group ID.
 
+        Args:
+            group_id (int): The unique identifier of the user group to which users will be added.
+            user_ids (list): A list of integers representing the user IDs to be added to the user 
+                group.
+
+        Returns:
+            dict: A dictionary containing the updated user group details as returned by the API.
+        """
         endpoint = f"/user-groups/{group_id}/members"
         params = user_ids
         updated_group = self.add_item(endpoint, params)
@@ -751,7 +1130,16 @@ class StackClient(object):
     
 
     def delete_user_from_group(self, group_id: int, user_id: int):
+        """
+        Delete a specific user from a user group in the Stack Overflow for Teams instance.
 
+        Args:
+            group_id (int): The unique identifier of the user group from which the user is to be removed.
+            user_id (int): The unique identifier of the user to be removed from the user group.
+
+        Returns:
+            None
+        """
         endpoint = f"/user-groups/{group_id}/members/{user_id}"
         self.delete_item(endpoint)
 
@@ -762,11 +1150,25 @@ class StackClient(object):
 
     def get_search_results(self, query: str, page: int = None, pagesize: int = None,
                       sort: str = None, one_page_limit: bool=True) -> list:
-        '''
-        As of June 2024, the endpoint always returns exactly 100 results
-        `sort` can be one of four string values: 'relevance', 'newest', 'active', or 'score'
-        Sort order is always descending
-        '''
+        """
+        Get a list of search results based on the provided query.
+
+        As of June 2024, the endpoint always returns exactly 100 results, regardless of page size.
+
+        Args:
+            query (str): The search query to be used.
+            page (int, optional): The page number for pagination. Defaults to 1.
+            pagesize (int, optional): The number of search results per page. 
+                Can be 15, 30, 50, or 100. Defaults to 100.
+            sort (str, optional): The field by which the search results should be sorted. 
+                Can be 'relevance', 'newest', 'active', or 'score'. Defaults to 'relevance'.
+                Sorted results are always in descending order.
+            one_page_limit (bool, optional): Flag indicating whether to limit the results to 
+                one page. Defaults to True.
+
+        Returns:
+            list: A list of search results matching the specified query.
+        """
         endpoint = "/search"
         params = {
             'query': query,
@@ -787,9 +1189,20 @@ class StackClient(object):
     def get_communities(self, page: int = None, pagesize: int = None,
                       sort: str = None, order: str = None) -> list:
         """
-        `sort` can be 'name' or 'size'
+        Retrieve a list of communities from the Stack Overflow for Teams instance.
+
+        Args:
+            page (int, optional): The page number for pagination. Defaults to 1.
+            pagesize (int, optional): The number of communities per page. 
+                Can be 15, 30, 50, or 100. Defaults to 100.
+            sort (str, optional): The field by which the communities should be sorted. 
+                Can be 'name' or 'size'. Defaults to 'name'.
+            order (str, optional): The order in which the communities should be sorted.
+                Can be 'asc' (ascending) or 'desc' (descending). Defaults to 'asc'.
+
+        Returns:
+            list: A list of communities matching the specified criteria.
         """
-            
         endpoint = "/communities"
         params = {
             'page': page if isinstance(page, int) else 1,
@@ -803,22 +1216,51 @@ class StackClient(object):
     
 
     def get_community_by_id(self, community_id: int) -> dict:
+        """
+        Retrieve a specific community by its ID.
 
+        Args:
+            community_id (int): The unique identifier of the community to retrieve.
+
+        Returns:
+            dict: A dictionary containing the details of the community as returned by the API.
+        """
         endpoint = f"/communities/{community_id}"
         community = self.get_items(endpoint)
         return community
 
 
-    def join_community(self, community_id: int, impersonation: bool=False):
+    def join_community(self, community_id: int):
+        """
+        Join a community in the Stack Overflow for Teams instance.
+        This method allows the authenticated user to join a specific community identified by its 
+        ID.
 
+        Args:
+            community_id (int): The unique identifier of the community to join.
+
+        Returns:
+            dict: A dictionary containing the updated details of the community after the user has 
+                joined.
+        """
         endpoint = f"/communities/{community_id}/join"
-
         updated_community = self.add_item(endpoint)
         return updated_community
     
 
-    def leave_community(self, community_id: int, impersonation: bool=False):
+    def leave_community(self, community_id: int):
+        """
+        Leave a community in the Stack Overflow for Teams instance.
+        This method allows the authenticated user to leave a specific community identified by its 
+            ID. 
 
+
+        Args:
+            community_id (int): The unique identifier of the community to leave.
+
+        Returns:
+            dict: A dictionary containing the updated details of the community after leaving.
+        """
         endpoint = f"/communities/{community_id}/leave"
 
         updated_community = self.add_item(endpoint)
@@ -826,7 +1268,19 @@ class StackClient(object):
 
 
     def add_users_to_community(self, community_id: int, user_ids: list) -> dict:
+        """
+        Add users to a community in the Stack Overflow for Teams instance.
+        This method can add one more users to a specific community identified by its ID. 
 
+        Args:
+            community_id (int): The unique identifier of the community to which users will 
+                be added.
+            user_ids (list): A list of integers representing the user IDs to be added as members 
+                to the community.
+
+        Returns:
+            dict: A dictionary containing the updated details of the community after adding the users as members.
+        """
         endpoint = f"/communities/{community_id}/join/bulk"
         params = {
             "memberUserIds": user_ids
@@ -836,7 +1290,20 @@ class StackClient(object):
     
 
     def remove_users_from_community(self, community_id: int, user_ids: list) -> dict:
+        """
+        Remove users from a community in the Stack Overflow for Teams instance.
+        This method can remove one or more users from a specific community identified by its ID. 
 
+        Args:
+            community_id (int): The unique identifier of the community from which users will be 
+                removed.
+            user_ids (list): A list of integers representing the user IDs to be removed from the 
+                community.
+
+        Returns:
+            dict: A dictionary containing the updated details of the community after removing the 
+                specified users.
+        """
         endpoint = f"/communities/{community_id}/leave/bulk"
         params = {
             "memberUserIds": user_ids
@@ -859,6 +1326,33 @@ class StackClient(object):
         sort can be 'creation' or 'lastEdit'
         permissions can be 'all', 'owned', or 'editable'
         """
+        """
+        Retrieve a list of collections based on the specified criteria.
+
+        Args:
+            page (int, optional): The page number for pagination. Defaults to 1.
+            pagesize (int, optional): The number of collections per page. 
+                Can be 15, 30, 50, or 100. Defaults to 100.
+            sort (str, optional): The field by which the collections should be sorted. 
+                Can be 'creation' or 'lastEdit'. Defaults to 'creation'.
+            order (str, optional): The order in which the collections should be sorted. 
+                Can be 'asc' (ascending) or 'desc' (descending). Defaults to 'asc'.
+            partial_title (str, optional): A partial title to filter collections by. 
+                Defaults to None.
+            author_ids (list of int, optional): The IDs of specific authors to filter 
+                collections by. Defaults to None.
+            permissions (str, optional): The permissions level for the collections. 
+                Can be 'all', 'owned', or 'editable'. Defaults to 'all'.
+            start_date (str, optional): The start date for filtering collections. 
+                Format: 'YYYY-MM' or 'YYYY-MM-DD'. Defaults to None.
+            end_date (str, optional): The end date for filtering collections. 
+                Format: 'YYYY-MM' or 'YYYY-MM-DD'. Defaults to None.
+            one_page_limit (bool, optional): Flag indicating whether to limit the results 
+                to one page. Defaults to False.
+
+        Returns:
+            list: A list of collections matching the specified criteria.
+        """
         endpoint = "/collections"
         params = {
             'page': page if isinstance(page, int) else 1,
@@ -877,7 +1371,15 @@ class StackClient(object):
     
 
     def get_collection_by_id(self, collection_id: int) -> dict:
+        """
+        Retrieve a specific collection by its ID.
 
+        Args:
+            collection_id (int): The unique identifier of the collection to retrieve.
+
+        Returns:
+            dict: A dictionary containing the details of the collection as returned by the API.
+        """
         endpoint = f"/collections/{collection_id}"
         collection = self.get_items(endpoint)
         return collection
@@ -885,7 +1387,23 @@ class StackClient(object):
 
     def add_collection(self, title: str, description: str="", content_ids: list=[],
                        editor_user_ids: list=[], editor_user_group_ids: list=[]) -> dict:
+        """
+        Add a new collection to the Stack Overflow for Teams instance.
 
+        Args:
+            title (str): The title of the collection.
+            description (str, optional): The description of the collection, 
+                defaults to an empty string.
+            content_ids (list, optional): A list of question and/or article IDs to be associated 
+                with the collection.
+            editor_user_ids (list, optional): A list of user IDs who have editing access to 
+                the collection.
+            editor_user_group_ids (list, optional): A list of user group IDs who have editing 
+                access to the collection.
+
+        Returns:
+            dict: A dictionary representing the newly created collection.
+        """
         endpoint = "/collections"
         params = {
             'title': title,
@@ -903,8 +1421,30 @@ class StackClient(object):
                         title: str=None, description: str=None,
                         content_ids: list=None, editor_user_ids: list=None, 
                         editor_user_group_ids: list=None) -> dict:
+        """
+        Edit a collection by providing any or all of the following:
+        owner ID, title, description, content IDs, editor user IDs, and/or editor user group IDs.
 
-        
+        Args:
+            collection_id (int): The unique identifier of the collection to be edited.
+            owner_id (int, optional): The new owner ID for the collection. If not provided, the 
+                original owner ID will be used.
+            title (str, optional): The new title for the collection. If not provided, the original 
+                title will be used.
+            description (str, optional): The new description for the collection. If not provided, 
+                the original description will be used.
+            content_ids (list, optional): A list of questions and/or article IDs to be associated 
+                with the collection. If not provided, the original content IDs will be used.
+            editor_user_ids (list, optional): A list of integers representing specific users who 
+                have editing access to the collection. If not provided, the original editor user 
+                IDs will be used.
+            editor_user_group_ids (list, optional): A list of integers representing user groups 
+                who have editing access to the collection. If not provided, the original editor 
+                user group IDs will be used.
+
+        Returns:
+            dict: A dictionary containing the edited collection details as returned by the API.
+        """
         endpoint = f"/collections/{collection_id}"
         if None in [owner_id, title, description, content_ids, editor_user_group_ids, 
                     editor_user_ids]:
@@ -927,7 +1467,15 @@ class StackClient(object):
     
 
     def delete_collection(self, collection_id: int):
+        """
+        Delete a specific collection from the Stack Overflow for Teams instance.
 
+        Args:
+            collection_id (int): The unique identifier of the collection to be deleted.
+
+        Returns:
+            None
+        """
         endpoint = f"/collections/{collection_id}"
         self.delete_item(endpoint)
 
@@ -981,6 +1529,20 @@ class StackClient(object):
             'error_message': 'Access denied - impersonation is only allowed via service accounts', 
             'error_name': 'access_denied'
         }
+
+        Args:
+            account_id (int): The account ID for which the impersonation token is requested.
+
+        Returns:
+            str: The impersonation token for the specified account ID.
+
+        Raises:
+            RequiresEnterpriseError: If user impersonation is attempted outside of Stack Overflow Enterprise.
+            InvalidRequestError: If an API key is missing for user impersonation.
+
+        Example:
+            stack_client = StackClient(url, token, key=API_KEY)
+            impersonation_token = stack_client.get_impersonation_token(account_id)
         '''
 
         if not self.soe:
@@ -1069,7 +1631,27 @@ class StackClient(object):
 
 
     def get_impersonated_user(self, account_id: int) -> dict:
+        """
+        Retrieve the details of a user by impersonating another user identified by their 
+        account ID.
 
+        This method first obtains an impersonation token by calling the 'get_impersonation_token' 
+        method with the provided account ID. Then, it uses this token to make an API call to 
+        retrieve the details of the impersonated user by calling the 'get_myself' method with the 
+        'impersonation' flag set to True.
+
+        Args:
+            account_id (int): The account ID of the user to be impersonated.
+
+        Returns:
+            dict: A dictionary containing the details of the impersonated user as returned by the 
+                API.
+
+        Raises:
+            RequiresEnterpriseError: If user impersonation is attempted outside of Stack Overflow 
+                Enterprise.
+            InvalidRequestError: If an API key is missing for user impersonation.
+        """
         self.impersonation_token = self.get_impersonation_token(account_id)
         user = self.get_myself(impersonation=True)
         return user
@@ -1081,7 +1663,33 @@ class StackClient(object):
 
     def get_items(self, endpoint: str, params: dict={}, impersonation: bool=False,
                   one_page_limit: bool=False):
+        """
+        Retrieve items from the API endpoint with pagination support.
 
+        This method sends GET requests to the specified API endpoint with optional parameters 
+        for pagination and user impersonation. It retrieves items from the API response and 
+        combines them into a list until all items are fetched or a one-page limit is reached.
+
+        Args:
+            endpoint (str): The API endpoint to retrieve items from.
+            params (dict, optional): Additional parameters to be included in the API request, 
+                defaults to an empty dictionary.
+            impersonation (bool, optional): Flag indicating whether user impersonation should be 
+                used, defaults to False.
+            one_page_limit (bool, optional): Flag indicating whether to limit the results to 
+                one page, defaults to False.
+
+        Returns:
+            list: A list of items retrieved from the API endpoint.
+
+        Raises:
+            Exception: If an unexpected response is received from the server.
+            InvalidRequestError: If the request to the API endpoint is invalid.
+            UnauthorizedError: If the request to the API endpoint is unauthorized.
+            ForbiddenError: If the request to the API endpoint is forbidden.
+            NotFoundError: If the requested resource is not found.
+            BadURLError: If there is an issue with the URL.
+        """
         method = GET
         items = []
         while True:
@@ -1109,27 +1717,65 @@ class StackClient(object):
     
 
     def add_item(self, endpoint: str, params: dict={}, impersonation: bool=False):
+        """
+        Add a new item to the API endpoint using a POST request.
 
+        Args:
+            endpoint (str): The API endpoint to add the item to.
+            params (dict, optional): Additional parameters to be included in the API request, 
+                defaults to an empty dictionary.
+            impersonation (bool, optional): Flag indicating whether user impersonation should 
+                be used, defaults to False.
+
+        Returns:
+            dict: A dictionary representing the newly created item.
+
+        Raises:
+            Exception: If an unexpected response is received from the server.
+            InvalidRequestError: If the request to the API endpoint is invalid.
+            UnauthorizedError: If the request to the API endpoint is unauthorized.
+            ForbiddenError: If the request to the API endpoint is forbidden.
+            NotFoundError: If the requested resource is not found.
+            BadURLError: If there is an issue with the URL.
+        """
         method = POST
-
         response = self.get_api_response(method, endpoint, params, impersonation=impersonation)
         new_item = response.json()
-
         return new_item
     
 
     def edit_item(self, endpoint: str, params: dict, impersonation: bool=False):
+        """
+        Edit an item in the Stack Overflow for Teams instance using the PUT method.
 
+        Args:
+            endpoint (str): The API endpoint for editing the item.
+            params (dict): A dictionary containing the parameters to be updated for the item.
+            impersonation (bool, optional): Flag indicating whether the request should be made 
+                using user impersonation. Defaults to False.
+
+        Returns:
+            dict: A dictionary containing the updated item details as returned by the API.
+        """
         method = PUT
-
         response = self.get_api_response(method, endpoint, params, impersonation=impersonation)
         updated_item = response.json()
-
         return updated_item
 
     
     def delete_item(self, endpoint: str, impersonation: bool=False):
+        """
+        Deletes an item from the Stack Overflow for Teams instance using the specified API 
+        endpoint.
 
+        Args:
+            endpoint (str): The API endpoint for deleting the item.
+            impersonation (bool, optional): Flag indicating whether the request should be 
+                made using user impersonation. Defaults to False.
+
+        Returns:
+            None
+        """
         method = DELETE
         response = self.get_api_response(method, endpoint, impersonation=impersonation)
 
@@ -1141,7 +1787,34 @@ class StackClient(object):
 
     def get_api_response(self, method: str, endpoint: str, params: dict={}, 
                          impersonation: bool=False):
+        """
+        Perform an API request using the specified HTTP method to the given endpoint.
 
+        Args:
+            method (str): The HTTP method to be used for the request 
+                (e.g., 'GET', 'POST', 'PUT', 'DELETE').
+            endpoint (str): The endpoint to which the request will be made.
+            params (dict, optional): The parameters to be included in the request, 
+                defaults to an empty dictionary.
+            impersonation (bool, optional): Flag indicating whether user impersonation should 
+                be used, defaults to False.
+
+        Returns:
+            requests.Response: The response object containing the API response data.
+
+        Raises:
+            Custom exceptions based on the response status code:
+                - BadRequestError: If the request is invalid (status code 400).
+                - UnauthorizedError: If authentication is required and has failed or has not been 
+                    provided (status code 401).
+                - ForbiddenError: If the client does not have permission to access the resource 
+                    (status code 403).
+                - NotFoundError: If the requested resource is not found (status code 404).
+                - MethodNotAllowedError: If the requested method is not allowed for the resource 
+                    (status code 405).
+                - TooManyRequestsError: If the rate limit has been exceeded (status code 429).
+                - ServerError: If the server encountered an unexpected condition (status code 500).
+        """
         endpoint_url = self.api_url + endpoint
         if impersonation:
             headers = {'Authorization': f'Bearer {self.impersonation_token}'}
@@ -1156,33 +1829,35 @@ class StackClient(object):
             response = request_type(endpoint_url, headers=headers, json=params, 
                                     verify=self.ssl_verify, proxies=self.proxies)
             
-        self.raise_status_code_exceptions(response) # check for errors and raise exceptions if necessary
+        self.raise_status_code_exceptions(response) # check errors and raise exceptions as needed
         
         return response
 
-                        
-        #     try:
-        #         json_data = response.json()
-        #     except json.decoder.JSONDecodeError: # some API calls do not return JSON data
-        #         logging.info(f"API request successfully sent to {endpoint_url}")
-        #         logging.debug(f"Response text: {response.text}")
-        #         return
-
-        #     if type(params) == dict and params.get('page'): # check request for pagination
-        #         logging.info(f"Received page {params['page']} from {endpoint_url}")
-        #         data += json_data['items']
-        #         if params['page'] == json_data['totalPages']:
-        #             break
-        #         params['page'] += 1
-        #     else:
-        #         logging.info(f"API request successfully sent to {endpoint_url}")
-        #         data = json_data
-        #         break
-
 
     def raise_status_code_exceptions(self, response: requests.Response) -> None:
-        """Parses the response codes and raises appropriate errors if necessary."""
+        """
+            Parses the response codes and raises appropriate errors if necessary.
 
+            Args:
+                response (requests.Response): The response object from the API request.
+
+            Raises:
+                InvalidRequestError: If the response status code is 400.
+                UnauthorizedError: If the response status code is 401 and the product is Stack  
+                    Overflow Enterprise.
+                BadURLError: If the response status code is 401 and the URL is incorrect, or if 
+                    the URL domain is correct but the team slug is not.
+                ForbiddenError: If the response status code is 403.
+                NotFoundError: If the response status code is 404 and the requested object is not 
+                    found.
+                BadURLError: If the response status code is 404 and the URL is incorrect.
+                BadURLError: If the response status code is 500 and the product is not Stack 
+                    Overflow Enterprise.
+                Exception: If an unexpected response is received from the server.
+
+            Returns:
+                None
+        """
         if response.status_code not in [200, 201, 204]:
             try:
                 error_message = response.json()
@@ -1204,9 +1879,6 @@ class StackClient(object):
                     raise BadURLError(self.base_url)
                 else:
                     raise UnauthorizedError(error_message)
-            
-            # elif response.status_code == 401:
-            #     raise UnauthorizedError(error_message)
 
             elif response.status_code == 403:
                 raise ForbiddenError(error_message)
@@ -1217,9 +1889,6 @@ class StackClient(object):
                     raise NotFoundError(error_message)
                 else:  # Otherwise, it's likely a bad URL
                     raise BadURLError(response.url)
-                
-            # elif response.status_code == 409:
-            #     raise ConflictError(error_message)
 
             elif response.status_code == 500 and not self.soe:
                 # 500 errors can happen when the URL for a Business instance is incorrect
@@ -1235,7 +1904,18 @@ class StackClient(object):
         
 
     def export_to_json(self, file_name: str, data: list|dict, directory: str=None):
+        """
+        Write the contents of the provided data (list or dictionary) to a JSON file.
 
+        Args:
+            file_name (str): The name of the JSON file to be created or overwritten.
+            data (list or dict): The data to be written to the JSON file.
+            directory (str, optional): The directory where the JSON file should be saved. 
+                If provided and the directory does not exist, it will be created. Defaults to None.
+
+        Returns:
+            None
+        """
         json_extension = '.json'
         if not file_name.endswith(json_extension):
             file_name = file_name + json_extension

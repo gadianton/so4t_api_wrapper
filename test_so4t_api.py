@@ -680,6 +680,38 @@ class TestImpersonationMethods(object):
         # account_id = self.get_account_id(client=stack)
         with pytest.raises(InvalidRequestError):
             impersonation_token = client.get_impersonation_token(user['accountId'])
+    
+
+    def impersonate_question_by_account_id_happy_path(self, client, user, myself):
+
+        question = client.impersonate_question_by_account_id(TEST_TITLE, TEST_BODY, TEST_TAGS,
+                                                             user['accountId'])
+        question_owner = question['owner']
+        self.assert_different_user_id(question_owner, myself)
+        assert question_owner['accountId'] == user['accountId']
+
+
+    def impersonate_question_by_user_id_happy_path(self, client, user, myself):
+
+        question = client.impersonate_question_by_account_id(TEST_TITLE, TEST_BODY, TEST_TAGS,
+                                                             user['id'])
+        question_owner = question['owner']
+        self.assert_different_user_id(question_owner, myself)
+        assert question_owner['id'] == user['id']
+
+
+    def impersonate_question_by_email_happy_path(self, client, user, myself):
+
+        question = client.impersonate_question_by_account_id(TEST_TITLE, TEST_BODY, TEST_TAGS,
+                                                             user['email'])
+        question_owner = question['owner']
+        self.assert_different_user_id(question_owner, myself)
+        assert question_owner['id'] == user['id']
+    
+
+    def assert_different_user_id(self, user1, user2):
+
+        assert user1['id'] != user2['id']
 
 
 class TestOtherFunctions(object):
