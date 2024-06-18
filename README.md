@@ -14,6 +14,7 @@ Full documentation for the API can be found at one of the following locations:
 ## Setup
 
 **Install**
+
 Install the package using pip:
 
 ```python
@@ -22,6 +23,7 @@ python3 -m pip install so4t_api
 > If you're running Windows, you'll probably need to use `py` instead of `python3`
 
 **API Authentication**
+
 To authenticate with the Stack Overflow API, you will need to generate a valid access token.
 
 * For Basic or Business, instructions for creating a personal access token (PAT) can be found in [this KB article](https://stackoverflow.help/en/articles/4385859-stack-overflow-for-teams-api).
