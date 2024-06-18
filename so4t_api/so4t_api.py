@@ -217,7 +217,7 @@ class StackClient(object):
         questions = self.get_questions()
 
         for question in questions:
-            question['answers'] = self.get_question_answers(question['id'])
+            question['answers'] = self.get_answers(question['id'])
 
         return questions
 
