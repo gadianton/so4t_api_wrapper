@@ -1,13 +1,12 @@
 """
 Much of the testing requires admin permissions, particular when checking the deletion status of
-content or looking up users by email address.
+content or looking up users by email address. Some testing requires impersonation to be enabled.
 
-For Stack Overflow Enterprise, turn off duplicate checking at this URL (requires admin):
+For Stack Overflow Enterprise, turn off duplicate checking at this URL (requires admin); otherwise,
+the testing will fail since it creates the same content over and over.
 <SITE_URL>/developer/site-settings/edit?name=Questions.Testing.EnableDuplicateCheckForQuestions
 
-Otherwise, the testing will fail since it creates the same content over and over. 
-
-There is no endpoint for deleting user groups, so user groups created during testing will need to 
+There is no endpoint for deleting user groups, so user groups created during testing will need to
 be cleaned up (deleted) manually.
 
 There is not endpoint for creating communities, so at least one community must be created manually
@@ -21,9 +20,13 @@ import shutil
 from so4t_api import StackClient, BadURLError, UnauthorizedError, InvalidRequestError
 import string
 
-GOOD_URL = os.getenv('GOOD_URL')
-GOOD_TOKEN = os.getenv('GOOD_TOKEN')
-GOOD_KEY = os.getenv('GOOD_KEY')
+try:
+    GOOD_URL = os.environ['GOOD_URL']
+    GOOD_TOKEN = os.environ['GOOD_TOKEN']
+    GOOD_KEY = os.environ['GOOD_KEY']
+except KeyError:
+    raise SystemExit("Please set the environment variables GOOD_URL, GOOD_TOKEN, and GOOD_KEY")
+
 BAD_TOKEN = "CheesePuffs"
 BAD_KEY = "CheesePuffs"
 
@@ -41,10 +44,10 @@ BAD_ID = 99999999
 
 @pytest.fixture(scope="session")
 def client():
-     return create_client()
+    return create_client()
 
 
-def create_client(url: str=GOOD_URL, token: str=GOOD_TOKEN, key: str=GOOD_KEY) -> StackClient:
+def create_client(url: str = GOOD_URL, token: str = GOOD_TOKEN, key: str = GOOD_KEY) -> StackClient:
     return StackClient(url, token, key)
 
 
@@ -123,8 +126,7 @@ class TestClientCreation(object):
         assert client.token == GOOD_TOKEN
         assert client.headers == {'Authorization': f'Bearer {GOOD_TOKEN}'}
         assert client.proxies == {'https': None}
-        assert client.ssl_verify == True
-
+        assert client.ssl_verify is True
 
     def test_create_client_with_bad_business_team_slug(self):
 
@@ -133,14 +135,12 @@ class TestClientCreation(object):
         with pytest.raises(BadURLError):
             client = StackClient(url, token)
 
-
     def test_create_client_with_bad_enterprise_subdomain(self):
 
         url = "https://cheesepuffs.stackenterprise.co"
         token = BAD_TOKEN
         with pytest.raises(BadURLError):
             client = StackClient(url, token)
-
 
     def test_create_client_with_wrong_domain(self):
 
@@ -149,14 +149,12 @@ class TestClientCreation(object):
         with pytest.raises(BadURLError):
             client = StackClient(url, token)
 
-
     def test_create_client_with_nonexistent_domain(self):
 
         url = "thisisnotarealdomainabcxyz.com"
         token = BAD_TOKEN
         with pytest.raises(BadURLError):
             client = StackClient(url, token)
-
 
     def test_create_client_with_good_url_no_https(self):
 
@@ -170,44 +168,39 @@ class TestQuestionMethods(object):
     def test_add_question_happy_path(self, client):
 
         new_question = client.add_question(TEST_TITLE, TEST_BODY, TEST_TAGS)
-        assert type(new_question) == dict
+        assert type(new_question) is dict
         assert TEST_TITLE == new_question['title']
         assert TEST_BODY in new_question['body']
         assert new_question['tags'][0]['name'] in TEST_TAGS
-
 
     def test_get_question_by_id_happy_path(self, client, question):
 
         # test_question = generate_test_question(stack)
         question = client.get_question_by_id(question['id'])
-        assert type(question) == dict
+        assert type(question) is dict
         assert question['title'] == TEST_TITLE
-
 
     def test_get_question_with_bad_id(self, client):
 
         with pytest.raises(Exception) as e:
             client.get_question_by_id(BAD_ID)
-        
-        assert "404" in str(e.value)
 
+        assert "404" in str(e.value)
 
     def test_edit_question_happy_path(self, client, question):
 
         # test_question = generate_test_question(stack)
         edited_question = client.edit_question(question['id'], title=EDITED_TITLE)
-        assert type(edited_question) == dict
+        assert type(edited_question) is dict
         assert edited_question['title'] == EDITED_TITLE
         assert edited_question['body'] == question['body']
         assert edited_question['tags'] == question['tags']
 
-
     def test_get_questions_happy_path(self, client):
 
         questions = client.get_questions()
-        assert type(questions) == list
+        assert type(questions) is list
         assert len(questions) > 0
-
 
     def test_get_questions_sorting_by_creation_descending(self, client):
 
@@ -215,71 +208,64 @@ class TestQuestionMethods(object):
         assert questions[0]['creationDate'] > questions[1]['creationDate']
         assert questions[1]['creationDate'] > questions[2]['creationDate']
 
-
     def test_delete_question_happy_path(self, client, question):
-        
+
         client.delete_question(question['id'])
         question = client.get_question_by_id(question['id'])
 
-        assert question['isDeleted'] == True
+        assert question['isDeleted'] is True
 
 
 class TestAnswerMethods(object):
     def test_add_answer_happy_path(self, client, question):
 
         test_answer = client.add_answer(question['id'], TEST_BODY)
-        assert type(test_answer) == dict
+        assert type(test_answer) is dict
         assert TEST_BODY in test_answer['body']
-
 
     def test_get_answers_happy_path(self, client, question_and_answer):
 
         question, answer = question_and_answer
         answers = client.get_answers(question['id'])
-        assert type(answers) == list
-        assert answer['body'] == answers[0]['body'] 
+        assert type(answers) is list
+        assert answer['body'] == answers[0]['body']
 
-    
     def test_get_answers_with_bad_question_id(self, client):
 
         with pytest.raises(Exception) as e:
             client.get_answers(BAD_ID)
-        
-        assert "404" in str(e.value)
 
+        assert "404" in str(e.value)
 
     def test_get_answer_by_id_happy_path(self, client, question_and_answer):
 
         question, answer = question_and_answer
         answer = client.get_answer_by_id(question['id'], answer['id'])
-        assert type(answer) == dict
+        assert type(answer) is dict
         assert TEST_BODY in answer['body']
-
 
     def test_get_answer_with_bad_answer_id(self, client, question_and_answer):
 
         question, answer = question_and_answer
         with pytest.raises(Exception) as e:
             client.get_answer_by_id(question['id'], BAD_ID)
-        
-        assert "404" in str(e.value)
 
+        assert "404" in str(e.value)
 
     def test_get_answer_with_bad_question_id(self, client, question_and_answer):
 
         question, answer = question_and_answer
         with pytest.raises(Exception) as e:
             client.get_answer_by_id(BAD_ID, answer['id'])
-        
+
         assert "404" in str(e.value)
-    
 
     def test_delete_answer_happy_path(self, client, question_and_answer):
 
         question, answer = question_and_answer
         client.delete_answer(question['id'], answer['id'])
         answer = client.get_answer_by_id(question['id'], answer['id'])
-        assert answer['isDeleted'] == True
+        assert answer['isDeleted'] is True
 
 
 class TestArticleMethods(object):
@@ -287,48 +273,43 @@ class TestArticleMethods(object):
     def test_add_article_happy_path(self, client):
 
         new_article = client.add_article(TEST_TITLE, TEST_BODY, TEST_TYPE, TEST_TAGS)
-        assert type(new_article) == dict
+        assert type(new_article) is dict
         assert TEST_TITLE == new_article['title']
         assert TEST_BODY in new_article['body']
         assert TEST_TYPE == new_article['type']
         assert new_article['tags'][0]['name'] in TEST_TAGS
 
-
     def test_get_article_by_id_happy_path(self, client, article):
 
         article = client.get_article_by_id(article['id'])
-        assert type(article) == dict
+        assert type(article) is dict
         assert TEST_TITLE == article['title']
 
-    
     def test_get_article_with_bad_id(self, client):
 
         with pytest.raises(Exception) as e:
             client.get_article_by_id(BAD_ID)
         assert "404" in str(e.value)
 
-    
     def test_edit_article_happy_path(self, client, article):
 
         edited_article = client.edit_article(article['id'], title=EDITED_TITLE)
-        assert type(edited_article) == dict
+        assert type(edited_article) is dict
         assert edited_article['title'] == EDITED_TITLE
         assert edited_article['body'] == article['body']
         assert edited_article['tags'] == article['tags']
 
-
     def test_get_articles_happy_path(self, client):
 
         articles = client.get_articles()
-        assert type(articles) == list
+        assert type(articles) is list
         assert len(articles) > 0
 
-    
     def test_delete_question_happy_path(self, client, article):
 
         client.delete_article(article['id'])
         article = client.get_article_by_id(article['id'])
-        assert article['isDeleted'] == True
+        assert article['isDeleted'] is True
 
 
 class TestTagMethods(object):
@@ -336,60 +317,53 @@ class TestTagMethods(object):
     def test_get_tags_happy_path(self, client):
 
         tags = client.get_tags()
-        assert type(tags) == list
+        assert type(tags) is list
         assert len(tags) > 0
 
-    
     def test_get_tag_by_name_happy_path(self, client):
 
         tag = client.get_tag_by_name(TEST_TAG_NAME)
         assert tag['name'] == TEST_TAG_NAME
 
-    
     def test_get_tag_by_id_happy_path(self, client, tag):
 
         tag = client.get_tag_by_id(tag['id'])
-        assert type(tag) == dict
+        assert type(tag) is dict
         assert tag['name'] == TEST_TAG_NAME
 
-    
     def test_get_tag_smes_happy_path(self, client, tag):
 
         smes = client.get_tag_smes(tag['id'])
-        assert type(smes) == dict
-        assert type(smes['users']) == list
-        assert type(smes['userGroups']) == list
-
+        assert type(smes) is dict
+        assert type(smes['users']) is list
+        assert type(smes['userGroups']) is list
 
     def test_edit_tag_smes_happy_path(self, client, tag, user, group):
 
         edited_smes = client.edit_tag_smes(tag['id'], [user['id']], [group['id']])
-        assert type(edited_smes) == dict
+        assert type(edited_smes) is dict
         assert len(edited_smes['users']) == 1
         assert edited_smes['users'][0]['id'] == user['id']
         # assert len(edited_smes['userGroups']) == 1
         assert group['id'] in [group['id'] for group in edited_smes['userGroups']]
 
-
     def test_add_sme_users_happy_path(self, client, tag, user):
 
         self.reset_smes(client, tag)
         updated_smes = client.add_sme_users(tag['id'], [user['id']])
-        assert type(updated_smes) == dict
+        assert type(updated_smes) is dict
         assert len(updated_smes['users']) == 1
         assert updated_smes['users'][0]['id'] == user['id']
         # assert len(updated_smes['userGroups']) == 0
 
-    
     def test_add_sme_groups_happy_path(self, client, tag, group):
 
         self.reset_smes(client, tag)
         updated_smes = client.add_sme_groups(tag['id'], [group['id']])
-        assert type(updated_smes) == dict
+        assert type(updated_smes) is dict
         assert len(updated_smes['users']) == 0
         # assert len(updated_smes['userGroups']) == 1
         assert group['id'] in [group['id'] for group in updated_smes['userGroups']]
-
 
     def test_remove_sme_user_happy_path(self, client, tag, user):
 
@@ -400,7 +374,6 @@ class TestTagMethods(object):
         smes = client.get_tag_smes(tag_id)
         assert user_id not in [user['id'] for user in smes['users']]
 
-    
     def test_remove_sme_group_happy_path(self, client, tag, group):
 
         tag_id = tag['id']
@@ -410,16 +383,14 @@ class TestTagMethods(object):
         smes = client.get_tag_smes(tag_id)
         assert group_id not in [group['id'] for group in smes['userGroups']]
 
-
     def test_get_all_tags_and_smes_happy_path(self, client):
 
         tags = client.get_all_tags_and_smes()
-        assert type(tags) == list
-        assert type(tags[0]) == dict
-        assert type(tags[0]['smes']) == dict
-        assert type(tags[0]['smes']['users']) == list
-        assert type(tags[0]['smes']['userGroups']) == list
-
+        assert type(tags) is list
+        assert type(tags[0]) is dict
+        assert type(tags[0]['smes']) is dict
+        assert type(tags[0]['smes']['users']) is list
+        assert type(tags[0]['smes']['userGroups']) is list
 
     def reset_smes(self, client, tag):
         """Removes all SMES from a tag to create a blank slate for testing"""
@@ -430,17 +401,15 @@ class TestUserMethods(object):
     def test_get_users_happy_path(self, client):
 
         users = client.get_users()
-        assert type(users) == list
+        assert type(users) is list
         assert len(users) > 0
 
-    
     def test_get_user_by_id_happy_path(self, client, user):
 
         user_id = user['id']
         user = client.get_user_by_id(user_id)
         self.assert_user_object(user)
         assert user['id'] == user_id
-
 
     def test_get_user_by_email_happy_path(self, client, user):
 
@@ -449,34 +418,29 @@ class TestUserMethods(object):
         self.assert_user_object(user)
         assert user['email'] == user_email
 
-
     def test_get_account_id_by_user_id_happy_path(self, client, user):
 
         account_id = client.get_account_id_by_user_id(user['id'])
         self.assert_account_id(account_id)
-
 
     def test_get_account_id_by_email_happy_path(self, client, user):
 
         account_id = client.get_account_id_by_email(user['email'])
         self.assert_account_id(account_id)
 
-
     def test_get_myself_happy_path(self, client):
 
         myself = client.get_myself()
         self.assert_user_object(myself)
 
-
     def assert_user_object(self, user_object):
 
-        assert type(user_object) == dict
-        assert type(user_object['accountId']) == int
+        assert type(user_object) is dict
+        assert type(user_object['accountId']) is int
 
-    
     def assert_account_id(self, account_id):
 
-        assert type(account_id) == int
+        assert type(account_id) is int
 
 
 class TestUserGroupMethods(object):
@@ -485,48 +449,43 @@ class TestUserGroupMethods(object):
 
         group_name = random_string(15)
         new_group = client.add_user_group(group_name, [user['id']], TEST_DESCRIPTION)
-        assert type(new_group) == dict
+        assert type(new_group) is dict
         assert new_group['name'] == group_name
         assert new_group['description'] == TEST_DESCRIPTION
         assert new_group['users'][0]['id'] == user['id']
 
-
     def test_get_user_groups_happy_path(self, client):
 
         groups = client.get_user_groups()
-        assert type(groups) == list
-        assert type(groups[0]) == dict
-        assert type(groups[0]['users']) == list
-
+        assert type(groups) is list
+        assert type(groups[0]) is dict
+        assert type(groups[0]['users']) is list
 
     def test_get_user_group_by_id_happy_path(self, client, group):
 
         group = client.get_user_group_by_id(group['id'])
-        assert type(group) == dict
-        assert type(group['users']) == list
-        assert type(group['description']) == str
-
+        assert type(group) is dict
+        assert type(group['users']) is list
+        assert type(group['description']) is str
 
     def test_edit_user_group_happy_path(self, client, group):
 
         new_name = random_string(7)
         updated_group = client.edit_user_group(group['id'], name=new_name)
-        assert type(updated_group) == dict
+        assert type(updated_group) is dict
         assert updated_group['name'] == new_name
         assert updated_group['users'] == group['users']
         assert updated_group['description'] == group['description']
 
-
     def test_add_users_to_group_happy_path(self, client, group, user):
 
-        group = client.edit_user_group(group['id'], user_ids=[]) # remove users
+        group = client.edit_user_group(group['id'], user_ids=[])  # remove users
         assert group['users'] == []
         updated_group = client.add_users_to_group(group['id'], [user['id']])
-        assert type(updated_group) == dict
-        assert type(updated_group['users']) == list
+        assert type(updated_group) is dict
+        assert type(updated_group['users']) is list
         assert len(updated_group['users']) == 1
         assert user['id'] in [user['id'] for user in updated_group['users']]
-
 
     def test_delete_user_from_group(self, client, group, user):
 
@@ -540,11 +499,10 @@ class TestCommunityMethods(object):
     def test_get_communities_happy_path(self, client):
 
         communities = client.get_communities()
-        assert type(communities) == list
+        assert type(communities) is list
         validate_communities(communities)
         self.assert_community_object(communities[0])
 
-    
     def test_community_by_id_happy_path(self, client, community):
 
         community_id = community['id']
@@ -552,20 +510,17 @@ class TestCommunityMethods(object):
         self.assert_community_object(community)
         assert community['id'] == community_id
 
-    
     def test_join_community_happy_path(self, client, community, myself):
-        
+
         updated_community = client.join_community(community['id'])
         self.assert_community_object(updated_community)
         self.assert_user_in_community(myself['id'], updated_community)
-    
 
     def test_leave_community_happy_path(self, client, community, myself):
-        
+
         updated_community = client.leave_community(community['id'])
         self.assert_community_object(updated_community)
         self.assert_user_not_in_community(myself['id'], updated_community)
-
 
     def test_add_users_to_community_happy_path(self, client, community, user):
 
@@ -573,7 +528,6 @@ class TestCommunityMethods(object):
         self.assert_community_object(updated_community)
         self.assert_user_in_community(user['id'], updated_community)
 
-    
     def test_remove_users_from_community_happy_path(self, client, community, user):
 
         updated_community = client.remove_users_from_community(community['id'], [user['id']])
@@ -581,17 +535,15 @@ class TestCommunityMethods(object):
         self.assert_user_not_in_community(user['id'], updated_community)
 
     def assert_community_object(self, community_object):
-        assert type(community_object) == dict
-        assert type(community_object['memberCount']) == int
-
+        assert type(community_object) is dict
+        assert type(community_object['memberCount']) is int
 
     def assert_user_in_community(self, user_id, community):
         assert user_id in [member['id'] for member in community["members"]]
-    
 
     def assert_user_not_in_community(self, user_id, community):
         assert user_id not in [member['id'] for member in community["members"]]
-    
+
 
 class TestCollectionMethods(object):
 
@@ -603,7 +555,6 @@ class TestCollectionMethods(object):
         self.assert_content_in_collection(question['id'], collection)
         self.assert_content_in_collection(article['id'], collection)
 
-
     def test_get_collection_by_id_happy_path(self, client, collection):
 
         collection_id = collection['id']
@@ -611,7 +562,6 @@ class TestCollectionMethods(object):
         self.assert_collection_object(collection)
         assert collection['id'] == collection_id
 
-    
     def test_edit_collection_happy_path(self, client, collection):
 
         new_title = "New Collection Name"
@@ -622,19 +572,16 @@ class TestCollectionMethods(object):
         assert updated_collection['content'] == collection['content']
         assert updated_collection['id'] == collection['id']
 
-
     def test_delete_collection_happy_path(self, client, collection):
 
         client.delete_collection(collection['id'])
         deleted_collection = client.get_collection_by_id(collection['id'])
-        assert deleted_collection['isDeleted'] == True
-
+        assert deleted_collection['isDeleted'] is True
 
     def assert_collection_object(self, collection):
 
-        assert type(collection) == dict
-        assert type(collection['content']) == list
-
+        assert type(collection) is dict
+        assert type(collection['content']) is list
 
     def assert_content_in_collection(self, content_id, collection):
 
@@ -644,7 +591,7 @@ class TestCollectionMethods(object):
 class TestSearchMethods(object):
 
     def test_get_search_results_happy_path(self, client, search_question):
-        
+
         results = client.get_search_results(search_question['title'])
 
         search_match = None
@@ -652,8 +599,8 @@ class TestSearchMethods(object):
             if result['title'] == search_question['title']:
                 search_match = result
                 break
-               
-        assert type(search_match) == dict
+
+        assert type(search_match) is dict
         assert search_match['tags'] == search_question['tags']
         assert search_question['creationDate'] in search_match['creationDate']
 
@@ -662,9 +609,8 @@ class TestImpersonationMethods(object):
     def test_get_impersonation_token_happy_path(self, client, user):
 
         impersonation_token = client.get_impersonation_token(user['accountId'])
-        assert type(impersonation_token) == str
-        assert impersonation_token.endswith("))") # token strings always end in double parentheses
-
+        assert type(impersonation_token) is str
+        assert impersonation_token.endswith("))")  # token strings always end in double parentheses
 
     def test_get_impersonation_token_with_no_key(self, user):
 
@@ -673,14 +619,12 @@ class TestImpersonationMethods(object):
         with pytest.raises(InvalidRequestError):
             impersonation_token = client.get_impersonation_token(user['accountId'])
 
-
     def test_get_impersonation_token_with_bad_key(self, user):
 
         client = create_client(key=BAD_KEY)
         # account_id = self.get_account_id(client=stack)
         with pytest.raises(InvalidRequestError):
             impersonation_token = client.get_impersonation_token(user['accountId'])
-    
 
     def impersonate_question_by_account_id_happy_path(self, client, user, myself):
 
@@ -690,7 +634,6 @@ class TestImpersonationMethods(object):
         self.assert_different_user_id(question_owner, myself)
         assert question_owner['accountId'] == user['accountId']
 
-
     def impersonate_question_by_user_id_happy_path(self, client, user, myself):
 
         question = client.impersonate_question_by_account_id(TEST_TITLE, TEST_BODY, TEST_TAGS,
@@ -699,7 +642,6 @@ class TestImpersonationMethods(object):
         self.assert_different_user_id(question_owner, myself)
         assert question_owner['id'] == user['id']
 
-
     def impersonate_question_by_email_happy_path(self, client, user, myself):
 
         question = client.impersonate_question_by_account_id(TEST_TITLE, TEST_BODY, TEST_TAGS,
@@ -707,7 +649,6 @@ class TestImpersonationMethods(object):
         question_owner = question['owner']
         self.assert_different_user_id(question_owner, myself)
         assert question_owner['id'] == user['id']
-    
 
     def assert_different_user_id(self, user1, user2):
 
@@ -728,13 +669,13 @@ class TestOtherFunctions(object):
         assert os.path.isdir(directory)
         assert os.path.exists(file_path)
 
-        shutil.rmtree(directory) # clean up creation of directory and file
+        shutil.rmtree(directory)  # clean up creation of directory and file
 
 
 def test_clean_up_questions_created_by_tests(client):
 
     questions = client.get_questions(page=1, pagesize=30, one_page_limit=False, sort="creation",
-                                    order="desc")
+                                     order="desc")
     for question in questions:
         if question['title'] == TEST_TITLE:
             client.delete_question(question['id'])
@@ -743,10 +684,11 @@ def test_clean_up_questions_created_by_tests(client):
 def test_clean_up_articles_created_by_tests(client):
 
     articles = client.get_articles(page=1, pagesize=30, one_page_limit=False, sort="creation",
-                                    order="desc")
+                                   order="desc")
     for article in articles:
         if article['title'] == TEST_TITLE:
             client.delete_article(article['id'])
+
 
 def random_string(length):
     return ''.join(random.choice(string.ascii_letters) for x in range(length))

@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "so4t_api"
+authors = [
+    {name = "Jonathan Klick", email = "jklick@gmail.com"},
+]
+description = "An API wrapper for Stack Overflow for Teams"
+readme = "README.md"
+requires-python = ">=3.8"
+keywords = ["Stack Overflow for Teams", "Stack Overflow Enterprise", "Stack Overflow"]
+license = {file = "LICENSE"}
+classifiers = [
+    'License :: OSI Approved :: MIT License',
+    'Development Status :: 4 - Beta',
+    'Programming Language :: Python',
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.8',
+    'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
+    'Programming Language :: Python :: 3.14',
+    'Operating System :: OS Independent'
+]
+dependencies = [
+    "requests"
+]
+dynamic = ["version"]
+
+[tool.setuptools]
+packages = ["so4t_api"]
+
+[tool.setuptools.dynamic]
+version = {attr = "so4t_api.__version__"}
+
+[project.urls]
+Homepage = "https://github.com/jklick-so/so4t_api_wrapper"
+Issues = "https://github.com/jklick-so/so4t_api_wrapper/issues"
