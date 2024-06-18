@@ -35,6 +35,12 @@ dynamic = ["version"]
 [tool.setuptools]
 packages = ["so4t_api"]
 
+[tool.pytest.ini_options]
+pythonpath = [ 
+    ".",
+    "so4t_api"
+]
+
 [tool.setuptools.dynamic]
 version = {attr = "so4t_api.__version__"}
 

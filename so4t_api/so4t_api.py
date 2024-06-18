@@ -1638,7 +1638,7 @@ class StackClient(object):
 
             try:
                 items += json_data['items']
-            except KeyError:  # API endpoint only returns a single result
+            except (KeyError, TypeError):  # API endpoint only returns a single result
                 logging.info(f"Successfully received data from {endpoint}")
                 return json_data
 

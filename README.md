@@ -1,4 +1,4 @@
-# Stack Overflow for Teams API Wrapper (so4t_api_wrapper)
+# Stack Overflow for Teams API Wrapper
 A Python wrapper for the Stack Overflow for Teams API, replicating the functionality of the Stack Overflow for Teams API in a more user-friendly way.
 
 Full documentation for the API can be found at one of the following locations:

@@ -267,6 +267,13 @@ class TestAnswerMethods(object):
         answer = client.get_answer_by_id(question['id'], answer['id'])
         assert answer['isDeleted'] is True
 
+    def test_get_all_questions_answers_and_comments_happy_path(self, client):
+
+        questions = client.get_all_questions_answers_and_comments()
+        assert type(questions) is list
+        assert type(questions[0]['comments']) is list
+        assert type(questions[0]['answers']) is list
+
 
 class TestArticleMethods(object):
 
