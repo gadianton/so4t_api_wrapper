@@ -1834,7 +1834,8 @@ class StackClient(object):
             #     raise ClientError(error_message)
 
             else:
-                raise Exception(f"Encountered an unexpected response from server: {error_message}")
+                raise Exception(f"Encountered an unexpected response from server: {error_message}."
+                                f"Status Code: {response.status_code}")
 
     def export_to_json(self, file_name: str, data: list | dict, directory: str = None):
         """
