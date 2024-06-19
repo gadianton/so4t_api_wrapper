@@ -1869,8 +1869,9 @@ class StackClient(object):
         if not file_name.endswith(json_extension):
             file_name = file_name + json_extension
 
-        if directory and not os.path.exists(directory):
-            os.makedirs(directory)
+        if directory:
+            if not os.path.exists(directory):
+                os.makedirs(directory)
             file_path = os.path.join(directory, file_name)
         else:
             file_path = file_name
