@@ -124,7 +124,7 @@ class TestClientCreation(object):
         client = StackClient(GOOD_URL, GOOD_TOKEN)
         assert client.base_url == GOOD_URL
         assert client.token == GOOD_TOKEN
-        assert client.headers == {'Authorization': f'Bearer {GOOD_TOKEN}'}
+        assert client.s.headers == {'Authorization': f'Bearer {GOOD_TOKEN}'}
         assert client.proxies == {'https': None}
         assert client.ssl_verify is True
 

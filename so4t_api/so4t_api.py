@@ -2,6 +2,7 @@
 import json
 import logging
 import os
+from time import sleep
 import urllib3
 
 # Third-party libraries
@@ -64,7 +65,8 @@ class StackClient(object):
 
         self.token = token
         self.key = key
-        self.headers = {'Authorization': f'Bearer {self.token}'}
+        self.s = requests.Session()
+        self.s.headers = {'Authorization': f'Bearer {self.token}'}
         self.proxies = {'https': proxy} if proxy else {'https': None}
         self.ssl_verify = ssl_verify
         if self.ssl_verify:
@@ -1632,8 +1634,15 @@ class StackClient(object):
         method = GET
         items = []
         while True:
-            response = self.get_api_response(method, endpoint, params=params,
+            try:
+                response = self.get_api_response(method, endpoint, params=params,
                                              impersonation=impersonation)
+            except TooManyRequestsError:
+                logging.warning("HTTP 429 response. Pausing API calls for 60 seconds. \n"
+                                "See 'Token bucket rate limiter' for more details: \n"
+                                "https://stackoverflowteams.help/en/articles/9085836-api-v3#token-bucket-rate-limiter")
+                sleep(60)
+                continue
             json_data = response.json()
 
             try:
@@ -1754,9 +1763,9 @@ class StackClient(object):
         if impersonation:
             headers = {'Authorization': f'Bearer {self.impersonation_token}'}
         else:
-            headers = self.headers
+            headers = self.s.headers
 
-        request_type = getattr(requests, method, None)  # get the method from the requests library
+        request_type = getattr(self.s, method, None)  # get the method from the requests library
         if method == GET:
             response = request_type(endpoint_url, headers=headers, params=params,
                                     verify=self.ssl_verify, proxies=self.proxies)
@@ -1824,6 +1833,12 @@ class StackClient(object):
                 else:  # Otherwise, it's likely a bad URL
                     raise BadURLError(response.url)
 
+            elif response.status_code == 429:
+                # Throttling documentation:
+                # https://stackoverflowteams.help/en/articles/9085836-api-v3
+                raise TooManyRequestsError(f"Too many API requests being sent. Headers: "
+                                           f"{response.headers}")
+
             elif response.status_code == 500 and not self.soe:
                 # 500 errors can happen when the URL for a Business instance is incorrect
                 raise BadURLError(self.base_url)
@@ -1835,7 +1850,7 @@ class StackClient(object):
 
             else:
                 raise Exception(f"Encountered an unexpected response from server: {error_message}."
-                                f"Status Code: {response.status_code}")
+                                f" Status Code: {response.status_code}")
 
     def export_to_json(self, file_name: str, data: list | dict, directory: str = None):
         """
@@ -2001,5 +2016,11 @@ class RequiresEnterpriseError(APIError):
 class SSLError(APIError):
     """Raised when an SSL error occurs during API calls
 
+    """
+    pass
+
+
+class TooManyRequestsError(APIError):
+    """Raised when the API is receiving too many requests
     """
     pass
