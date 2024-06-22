@@ -19,7 +19,7 @@ class StackClient(object):
 
     def __init__(self, url: str, token: str, key: str = None,
                  proxy: str = None, ssl_verify: bool = True,
-                 logging_level="INFO"):
+                 private_team: str = None, logging_level="INFO"):
         """
         Initialize the StackClient class with the provided parameters.
 
@@ -69,6 +69,7 @@ class StackClient(object):
         self.s.headers = {'Authorization': f'Bearer {self.token}'}
         self.proxies = {'https': proxy} if proxy else {'https': None}
         self.ssl_verify = ssl_verify
+        self.private_team = private_team
         if self.ssl_verify:
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -83,6 +84,8 @@ class StackClient(object):
         else:  # Stack Overflow Enterprise
             self.base_url = url  # Used to craft a URL in get_impersonation_token
             self.api_url = self.base_url + "/api/v3"
+            if private_team:
+                self.api_url = self.api_url + f"/teams/{private_team}"
             self.impersonation_token = None  # Impersonation only available in Enterprise
             self.soe = True  # Product is Stack Overflow Enterprise
 
@@ -311,6 +314,7 @@ class StackClient(object):
     def get_question_comments(self, question_id: int) -> list:
         """
         Retrieve comments for a specific question identified by its ID.
+        Comments are always sorted by creationDate, in ascending order.
 
         Args:
             question_id (int): The unique identifier of the question for which comments are to be
@@ -367,7 +371,7 @@ class StackClient(object):
             'page': page if isinstance(page, int) else 1,
             'pageSize': pagesize if pagesize in [15, 30, 50, 100] else 100,
             'sort': sort if isinstance(sort, str) else 'creation',
-            "order": order if order in ['asc', 'desc'] else 'desc',
+            "order": order if order in ['asc', 'desc'] else 'asc',
         }
         answers = self.get_items(endpoint, params)
         return answers
@@ -411,6 +415,7 @@ class StackClient(object):
     def get_answer_comments(self, question_id: int, answer_id: int) -> list:
         """
         Retrieve comments for a specific answer identified by its question ID and answer ID.
+        Comments are always sorted by creationDate, in ascending order.
 
         Args:
             question_id (int): The unique identifier of the question to which the answer belongs.
@@ -1636,11 +1641,12 @@ class StackClient(object):
         while True:
             try:
                 response = self.get_api_response(method, endpoint, params=params,
-                                             impersonation=impersonation)
+                                                 impersonation=impersonation)
             except TooManyRequestsError:
                 logging.warning("HTTP 429 response. Pausing API calls for 60 seconds. \n"
                                 "See 'Token bucket rate limiter' for more details: \n"
-                                "https://stackoverflowteams.help/en/articles/9085836-api-v3#token-bucket-rate-limiter")
+                                "https://stackoverflowteams.help/en/articles/9085836-api-v3#token-bucket-rate-limiter"
+                                )
                 sleep(60)
                 continue
             json_data = response.json()
