@@ -32,6 +32,10 @@ class StackClient(object):
                 defaults to None.
             ssl_verify (bool, optional): Flag indicating whether SSL verification should be
                 performed, defaults to True.
+            private_team (str, optional): Used in Enterprise to create an API client for a specific
+                private team. The string should be the URL slug for the desired private team.
+                Example: "https://subdomain.stackenterprise.co/c/PRIVATE-TEAM-SLUG"
+                would be "PRIVATE-TEAM-SLUG". Defaults to None.
             logging_level (str, optional): The level of logging to be used, defaults to "INFO".
 
         Raises:
@@ -45,7 +49,7 @@ class StackClient(object):
             ssl_verify (bool): Flag indicating whether SSL verification should be performed.
             base_url (str): The base URL for the Stack Overflow for Teams instance.
             team_slug (str): The team slug extracted from the URL.
-            api_url (str): The full API URL to be used for requests.
+            api_url (str): The full API URL to be used for API requests.
             impersonation_token (str): The token for user impersonation.
             soe (bool): Flag indicating whether the product is Stack Overflow Enterprise.
 
@@ -73,18 +77,18 @@ class StackClient(object):
         if self.ssl_verify:
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-        if not url.startswith('https://'):
-            url = 'https://' + url
+        if url.startswith('https://'):
+            self.base_url = url
+        else:
+            self.base_url = 'https://' + url
 
         if "stackoverflowteams.com" in url:  # Stack Overflow Business or Basic
-            self.base_url = url
             self.team_slug = url.split("https://stackoverflowteams.com/c/")[1]
             self.api_url = f"https://api.stackoverflowteams.com/v3/teams/{self.team_slug}"
             self.soe = False  # Product is not Stack Overflow Enterprise
         else:  # Stack Overflow Enterprise
-            self.base_url = url  # Used to craft a URL in get_impersonation_token
             self.api_url = self.base_url + "/api/v3"
-            if private_team:
+            if self.private_team:
                 self.api_url = self.api_url + f"/teams/{private_team}"
             self.impersonation_token = None  # Impersonation only available in Enterprise
             self.soe = True  # Product is Stack Overflow Enterprise
@@ -1479,6 +1483,13 @@ class StackClient(object):
             'error_name': 'access_denied'
         }
 
+        When impersonation hasn't been turned on...
+        {
+            'error_id': 400,
+            'error_message': 'access_tokens',
+            'error_name': 'bad_parameter'
+        }
+
         Args:
             account_id (int): The account ID for which the impersonation token is requested.
 
@@ -1509,17 +1520,15 @@ class StackClient(object):
         endpoint = '/access-tokens/exchange'
         endpoint_url = self.base_url + '/api/2.3' + endpoint
         headers = {'X-API-Key': self.key}
-        params = {
-            'access_tokens': self.token,
-            'exchange_type': 'impersonate',
-            'account_id': account_id
-        }
-
-        response = requests.post(endpoint_url, params=params, headers=headers)
+        request_url = f"{endpoint_url}?access_tokens={self.token}&exchange_type=impersonate&" \
+            f"account_id={account_id}"
+        logging.info(f'Impersonation token being generated for account ID {account_id}...')
+        response = requests.post(request_url, headers=headers)
         self.raise_status_code_exceptions(response)
 
         json_data = response.json()
         impersonation_token = json_data['items'][0]['access_token']
+        logging.info('Impersonation token successfully generated.')
 
         return impersonation_token
 
@@ -1814,7 +1823,13 @@ class StackClient(object):
                 error_message = response.text
 
             if response.status_code == 400:
-                raise InvalidRequestError(error_message)
+                if error_message.get('error_message') == 'access_tokens' and \
+                        error_message.get('error_name') == 'bad_parameter':
+                    raise InvalidRequestError('Please make sure you have enabled impersonation.'
+                                              ' If not, please contact support@stackoverflow.com'
+                                              f'\n {error_message}')
+                else:
+                    raise InvalidRequestError(error_message)
 
             elif response.status_code == 401 and self.soe:
                 raise UnauthorizedError(error_message)

@@ -133,35 +133,40 @@ class TestClientCreation(object):
         url = "https://stackoverflowteams.com/c/cheese-puffs"
         token = BAD_TOKEN
         with pytest.raises(BadURLError):
-            client = StackClient(url, token)
+            # client = StackClient(url, token)
+            StackClient(url, token)
 
     def test_create_client_with_bad_enterprise_subdomain(self):
 
         url = "https://cheesepuffs.stackenterprise.co"
         token = BAD_TOKEN
         with pytest.raises(BadURLError):
-            client = StackClient(url, token)
+            # client = StackClient(url, token)
+            StackClient(url, token)
 
     def test_create_client_with_wrong_domain(self):
 
         url = "google.com"
         token = BAD_TOKEN
         with pytest.raises(BadURLError):
-            client = StackClient(url, token)
+            # client = StackClient(url, token)
+            StackClient(url, token)
 
     def test_create_client_with_nonexistent_domain(self):
 
         url = "thisisnotarealdomainabcxyz.com"
         token = BAD_TOKEN
         with pytest.raises(BadURLError):
-            client = StackClient(url, token)
+            # client = StackClient(url, token)
+            StackClient(url, token)
 
     def test_create_client_with_good_url_no_https(self):
 
         url = "soedemo.stackenterprise.co"
         token = BAD_TOKEN
         with pytest.raises(UnauthorizedError):
-            stack = StackClient(url, token)
+            # stack = StackClient(url, token)
+            StackClient(url, token)
 
 
 class TestQuestionMethods(object):
@@ -401,7 +406,8 @@ class TestTagMethods(object):
 
     def reset_smes(self, client, tag):
         """Removes all SMES from a tag to create a blank slate for testing"""
-        no_smes = client.edit_tag_smes(tag['id'], [], [])
+        # client.edit_tag_smes(tag['id'], [], [])
+        client.edit_tag_smes(tag['id'], [], [])
 
 
 class TestUserMethods(object):
@@ -624,14 +630,16 @@ class TestImpersonationMethods(object):
         client = create_client(key=None)
         # account_id = self.get_account_id(client=stack)
         with pytest.raises(InvalidRequestError):
-            impersonation_token = client.get_impersonation_token(user['accountId'])
+            # impersonation_token = client.get_impersonation_token(user['accountId'])
+            client.get_impersonation_token(user['accountId'])
 
     def test_get_impersonation_token_with_bad_key(self, user):
 
         client = create_client(key=BAD_KEY)
         # account_id = self.get_account_id(client=stack)
         with pytest.raises(InvalidRequestError):
-            impersonation_token = client.get_impersonation_token(user['accountId'])
+            # impersonation_token = client.get_impersonation_token(user['accountId'])
+            client.get_impersonation_token(user['accountId'])
 
     def impersonate_question_by_account_id_happy_path(self, client, user, myself):
 

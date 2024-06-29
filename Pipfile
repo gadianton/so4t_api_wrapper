@@ -4,9 +4,13 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-requests = "*"
+certifi = "==2024.6.2"
+charset-normalizer = "==3.3.2"
+idna = "==3.7"
+requests = "==2.32.3"
+urllib3 = "==2.2.2"
 
 [dev-packages]
 
 [requires]
-python_version = "3.11"
+python_version = "3.12"
