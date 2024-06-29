@@ -3,6 +3,7 @@ import json
 import logging
 import os
 from time import sleep
+from urllib.parse import urlparse, urlunparse
 import urllib3
 
 # Third-party libraries
@@ -77,10 +78,12 @@ class StackClient(object):
         if self.ssl_verify:
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-        if url.startswith('https://'):
-            self.base_url = url
-        else:
-            self.base_url = 'https://' + url
+        scheme, netloc, path, params, query, fragment = urlparse(url)
+        scheme = "https"
+        if not netloc:
+            netloc = path
+            path = ""
+        self.base_url = urlunparse((scheme, netloc, path, "", "", ""))
 
         if "stackoverflowteams.com" in url:  # Stack Overflow Business or Basic
             self.team_slug = url.split("https://stackoverflowteams.com/c/")[1]
