@@ -44,4 +44,4 @@ jobs:
           desired_coverage: ${{ github.event.inputs.desired_coverage }}
           branch: ${{ github.ref_name }}
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_KEY }}
