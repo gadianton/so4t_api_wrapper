@@ -34,7 +34,7 @@ jobs:
           python3 -m pip install pytest
 
       - name: Qodo Cover
-        uses: qodo-ai/qodo-ci/.github/actions/qodo-cover@v0.1.5
+        uses: qodo-ai/qodo-ci/.github/actions/qodo-cover@v0.1.11
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ github.ref_name }}
